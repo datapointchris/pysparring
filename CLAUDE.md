@@ -1,7 +1,8 @@
 # pysparring
 
 Runs PySpark transform candidates against each other across datasets, Spark configurations and
-clusters, and compares their outputs, physical plans and timing.
+clusters, and compares their outputs, physical plans and timing. `docs/README.md` indexes why the
+design is what it is. Read it before changing the experiment model or what is refused.
 
 ## Two distributions share one uv workspace
 
@@ -10,6 +11,7 @@ pyproject.toml  the workspace, the release config, and every Python tool's confi
 library/        pysparring: imported as `pysparring`, Python >=3.11, no scripts
 cli/            pysparring-cli: imported as `pysparring_cli`, Python >=3.13, the `pysparring` command
 fixtures/       real Spark output both members' tests read, and the docker jobs that capture it
+docs/           the design pages
 ```
 
 - **The dependency runs one way: the CLI imports the library, never the reverse.** Typer and rich
@@ -23,6 +25,13 @@ fixtures/       real Spark output both members' tests read, and the docker jobs 
 - **A library dependency arrives in the change that first imports it.** It must install on CPython
   3.11 from a wheel. An optional engine is imported lazily and declared nowhere, and its
   missing-import error names the distribution to install.
+- **The JSON Schemas in `library/src/pysparring/schemas/` are written by hand.** A test validates
+  an `Experiment.definition()` against `experiment.json`, which refuses unknown fields. That
+  definition holds path and catalog tables only, so a doppeldata or DataFrame table's shape is
+  checked against the schema by reading. jsonschema is a dev dependency only.
+- **Every refusal code is registered in `refusals.CODES`.** A code never changes meaning, and a
+  retired one is never reused.
+- **`static_conf_keys.txt` is written by `fixtures/regenerate.sh static-conf-keys`**, never by hand.
 - **The member `pyproject.toml` files carry packaging only.** ruff, mypy and pytest read their
   config from the root file.
 

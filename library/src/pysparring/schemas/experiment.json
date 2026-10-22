@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pysparring experiment definition, schema version 1",
+  "description": "The resolved definition Experiment.definition() returns and definition_sha256 hashes. Local paths are absolute, each candidate carries its import path and a hash of its source, and each section holds every field with its default filled in.",
+  "type": "object",
+  "required": ["schema_version", "candidates", "datasets", "confs", "clusters", "compare", "timing", "baseline", "expect"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "candidates": {
+      "description": "Each candidate by name.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/candidate" }
+    },
+    "datasets": {
+      "description": "Each dataset by name, mapping a table name to its source.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": { "$ref": "#/$defs/table" }
+      }
+    },
+    "confs": {
+      "description": "Each conf overlay by name, applied with spark.conf.set between runs on one session.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/conf_values" }
+    },
+    "clusters": {
+      "description": "Each cluster by name.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/cluster" }
+    },
+    "compare": { "$ref": "#/$defs/compare" },
+    "timing": { "$ref": "#/$defs/timing" },
+    "baseline": {
+      "description": "The cell the rank-stability table compares every other cell to.",
+      "type": "object",
+      "required": ["cell"],
+      "additionalProperties": false,
+      "properties": {
+        "cell": { "type": "string", "pattern": "^[^/]+/[^@]+@.+$" }
+      }
+    },
+    "expect": {
+      "description": "Promises the experiment declares, which a run certifies.",
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "required": ["ref", "kwargs", "tables", "source_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": { "description": "The import path, module:qualname.", "type": "string", "pattern": "^[^:]+:.+$" },
+        "kwargs": { "description": "Keyword arguments bound to parameters that have a default.", "type": "object" },
+        "tables": {
+          "description": "The parameters without a default, each naming a table in every dataset.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "source_sha256": {
+          "description": "The SHA-256 of the function's source text, or null where Python cannot read it.",
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "table": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "path", "format"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "path" },
+            "path": { "description": "An absolute local path, or a remote URI as written.", "type": "string" },
+            "format": { "description": "The Spark source format.", "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "table"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "catalog" },
+            "table": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "profile", "profile_sha256", "scenario", "scenario_sha256", "rows", "seed"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "doppeldata" },
+            "profile": { "type": "string" },
+            "profile_sha256": { "$ref": "#/$defs/sha256" },
+            "scenario": { "type": ["string", "null"] },
+            "scenario_sha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+            "rows": { "type": "integer", "minimum": 1 },
+            "seed": { "type": "integer", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "semantic_hash"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "dataframe" },
+            "semantic_hash": { "description": "Spark's DataFrame.semanticHash() of the logical plan.", "type": "integer" }
+          }
+        }
+      ]
+    },
+    "conf_values": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "cluster": {
+      "type": "object",
+      "required": ["backend", "runtime_version", "worker_type", "workers", "execution_class", "static_conf", "region"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "enum": ["local", "glue-image", "glue-session", "glue-job", "glue-livy", "emr-serverless", "athena", "emr-ec2"]
+        },
+        "runtime_version": { "type": ["string", "null"] },
+        "worker_type": { "type": ["string", "null"] },
+        "workers": { "type": ["integer", "null"], "minimum": 1 },
+        "execution_class": { "type": "string" },
+        "static_conf": {
+          "description": "Confs fixed when the session starts, which a conf overlay cannot set.",
+          "$ref": "#/$defs/conf_values"
+        },
+        "region": { "type": ["string", "null"] }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "required": ["reference", "keys", "rel_tol", "abs_tol", "exclude_columns"],
+      "additionalProperties": false,
+      "properties": {
+        "reference": { "description": "The candidate outputs and ratios are taken against.", "type": "string" },
+        "keys": { "type": "array", "items": { "type": "string" } },
+        "rel_tol": { "type": "number", "minimum": 0 },
+        "abs_tol": { "type": "number", "minimum": 0 },
+        "exclude_columns": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": ["warmup_rounds", "rounds", "order", "seed", "alpha", "min_effect", "underpowered"],
+      "additionalProperties": false,
+      "properties": {
+        "warmup_rounds": { "type": "integer", "minimum": 0 },
+        "rounds": { "type": "integer", "minimum": 1 },
+        "order": { "enum": ["interleaved", "sequential"] },
+        "seed": { "type": "integer" },
+        "alpha": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "min_effect": { "description": "The slower arm's time over the faster's below which no difference is reported.", "type": "number", "minimum": 1 },
+        "underpowered": { "description": "Whether rounds may be too few for the test to reach alpha, which labels every verdict.", "type": "boolean" }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

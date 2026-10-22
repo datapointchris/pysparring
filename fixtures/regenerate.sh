@@ -11,7 +11,7 @@
 # captures reach Maven Central for sparkMeasure's jar.
 set -euo pipefail
 
-readonly CAPTURES=(spark-3.5.9 spark-4.2.0 spark-connect-4.2.0)
+readonly CAPTURES=(spark-3.5.9 spark-4.2.0 spark-connect-4.2.0 static-conf-keys)
 readonly SPARK_3=apache/spark:3.5.9-python3
 readonly SPARK_4=apache/spark:4.2.0-python3
 
@@ -58,6 +58,11 @@ run_capture() {
       ;;
     spark-connect-4.2.0)
       in_container "$SPARK_4" bash /job/run-connect-probe.sh "${CONNECT_CLIENT_PACKAGES[@]}"
+      ;;
+    static-conf-keys)
+      mkdir -p "$work/static-conf-keys"
+      in_container "$SPARK_3" /opt/spark/bin/spark-submit /job/list_static_confs.py /out/static-conf-keys/3.5.9.txt
+      in_container "$SPARK_4" /opt/spark/bin/spark-submit /job/list_static_confs.py /out/static-conf-keys/4.2.0.txt
       ;;
   esac
 }
