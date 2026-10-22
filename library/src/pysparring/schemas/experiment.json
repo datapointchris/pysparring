@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pysparring experiment definition, schema version 1",
+  "description": "The definition Experiment.definition() returns and definition_sha256 hashes. A local path under the experiment's root is relative to it, each candidate is named by its import path, and each section holds every field with its default filled in.",
+  "type": "object",
+  "required": ["schema_version", "candidates", "datasets", "confs", "clusters", "compare", "timing", "baseline", "expect"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "candidates": {
+      "description": "Each candidate by name.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/candidate" }
+    },
+    "datasets": {
+      "description": "Each dataset by name, mapping a table name to its source.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": { "$ref": "#/$defs/table" }
+      }
+    },
+    "confs": {
+      "description": "Each conf overlay by name, set with spark.conf.set on a running session.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/conf_values" }
+    },
+    "clusters": {
+      "description": "Each cluster by name.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/cluster" }
+    },
+    "compare": { "$ref": "#/$defs/compare" },
+    "timing": { "$ref": "#/$defs/timing" },
+    "baseline": {
+      "description": "The cell the other cells are ranked against.",
+      "type": "object",
+      "required": ["cell"],
+      "additionalProperties": false,
+      "properties": {
+        "cell": { "description": "A cell id, dataset/conf@cluster.", "type": "string", "pattern": "^[^/@.]+/[^/@.]+@[^/@.]+$" }
+      }
+    },
+    "expect": {
+      "description": "Promises the experiment declares about its own results.",
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "required": ["ref", "kwargs", "tables"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": { "description": "The import path, module:qualname.", "type": "string", "pattern": "^[^:]+:.+$" },
+        "kwargs": { "description": "Keyword arguments bound to parameters that have a default.", "type": "object" },
+        "tables": {
+          "description": "The parameters without a default, each naming a table in every dataset.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "table": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "path", "format"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "path" },
+            "path": {
+              "description": "A local path relative to the experiment's root, an absolute local path outside it, or a remote URI as written.",
+              "type": "string"
+            },
+            "format": { "description": "The Spark source format.", "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "table"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "catalog" },
+            "table": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "profile", "scenario", "rows", "seed"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "doppeldata" },
+            "profile": { "description": "A path, written as a path table's is.", "type": "string" },
+            "scenario": { "type": ["string", "null"] },
+            "rows": { "type": "integer", "minimum": 1 },
+            "seed": { "type": "integer", "minimum": 0 }
+          }
+        },
+        {
+          "description": "A DataFrame handed to the SDK. Nothing about it is part of the definition but its place.",
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "dataframe" }
+          }
+        }
+      ]
+    },
+    "conf_values": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "cluster": {
+      "type": "object",
+      "required": ["backend", "runtime_version", "worker_type", "workers", "execution_class", "static_conf", "region"],
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "enum": ["local", "glue-image", "glue-session", "glue-job", "glue-livy", "emr-serverless", "athena", "emr-ec2"]
+        },
+        "runtime_version": { "type": ["string", "null"] },
+        "worker_type": { "type": ["string", "null"] },
+        "workers": { "type": ["integer", "null"], "minimum": 1 },
+        "execution_class": { "type": "string" },
+        "static_conf": {
+          "description": "Confs a session takes only when it starts, which a conf overlay cannot set.",
+          "$ref": "#/$defs/conf_values"
+        },
+        "region": { "type": ["string", "null"] }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "required": ["reference", "keys", "rel_tol", "abs_tol", "exclude_columns"],
+      "additionalProperties": false,
+      "properties": {
+        "reference": { "description": "The candidate the others are compared against.", "type": "string" },
+        "keys": { "type": "array", "items": { "type": "string" } },
+        "rel_tol": { "type": "number", "minimum": 0 },
+        "abs_tol": { "type": "number", "minimum": 0 },
+        "exclude_columns": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "required": ["warmup_rounds", "rounds", "order", "seed", "alpha", "min_effect", "underpowered"],
+      "additionalProperties": false,
+      "properties": {
+        "warmup_rounds": { "type": "integer", "minimum": 0 },
+        "rounds": { "type": "integer", "minimum": 1 },
+        "order": { "enum": ["interleaved", "sequential"] },
+        "seed": { "type": "integer" },
+        "alpha": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "min_effect": { "description": "The smallest ratio of the slower arm's time to the faster's that counts as a difference.", "type": "number", "minimum": 1 },
+        "underpowered": { "description": "Whether rounds may be fewer than the significance test needs to reach alpha.", "type": "boolean" }
+      }
+    }
+  }
+}

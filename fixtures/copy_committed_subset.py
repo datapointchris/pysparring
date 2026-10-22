@@ -75,10 +75,22 @@ def copy_capture(source: Path, target: Path) -> None:
     (target / 'rest-sql-executions-excerpt.json').write_text(json.dumps(excerpt, indent=2) + '\n')
 
 
+def write_static_conf_keys(source: Path, target: Path) -> None:
+    """The keys any captured Spark refuses at runtime, merged into the list the library ships."""
+    lists = sorted(source.glob('*.txt'))
+    if not lists or any(path.stat().st_size == 0 for path in lists):
+        sys.exit(f'copy_committed_subset.py: {source} holds no static conf list, or an empty one')
+    keys = {line for path in lists for line in path.read_text().splitlines() if line}
+    target.write_text('\n'.join(sorted(keys)) + '\n')
+
+
 def main() -> None:
     capture_dir, fixtures_dir = Path(sys.argv[1]), Path(sys.argv[2])
     for capture in sys.argv[3:]:
-        copy_capture(capture_dir / capture, fixtures_dir / capture)
+        if capture == 'static-conf-keys':
+            write_static_conf_keys(capture_dir / capture, fixtures_dir.parent / 'library/src/pysparring/static_conf_keys.txt')
+        else:
+            copy_capture(capture_dir / capture, fixtures_dir / capture)
 
 
 if __name__ == '__main__':

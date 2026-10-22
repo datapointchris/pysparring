@@ -3,8 +3,12 @@ import json
 from typing import Annotated
 
 import typer
+from pysparring.schemas import schema_names
+from pysparring.schemas import schema_text
 
 app = typer.Typer(no_args_is_help=True)
+schemas_app = typer.Typer(no_args_is_help=True, help='The JSON Schemas pysparring ships, so a program can check a document it reads.')
+app.add_typer(schemas_app, name='schemas')
 
 
 def installed_commit() -> str | None:
@@ -31,3 +35,20 @@ def root(
     ] = None,
 ) -> None:
     """Run PySpark transform candidates against each other, and compare their outputs, plans and timing."""
+
+
+@schemas_app.command('list')
+def schemas_list() -> None:
+    """List the name of every schema pysparring ships, one per line."""
+    for name in schema_names():
+        typer.echo(name)
+
+
+@schemas_app.command('show', no_args_is_help=True)
+def schemas_show(
+    name: Annotated[str, typer.Argument(metavar='NAME', help=f'A schema name: {", ".join(schema_names())}.', show_default=False)],
+) -> None:
+    """Print one JSON Schema, draft 2020-12."""
+    if name not in schema_names():
+        raise typer.BadParameter(f'{name!r} is not a schema. The schemas are {", ".join(schema_names())}.', param_hint='NAME')
+    typer.echo(schema_text(name), nl=False)
