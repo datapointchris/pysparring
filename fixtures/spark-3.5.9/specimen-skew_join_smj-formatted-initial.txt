@@ -1,0 +1,77 @@
+== Physical Plan ==
+AdaptiveSparkPlan (12)
++- SortMergeJoin Inner (11)
+   :- Sort (4)
+   :  +- Exchange (3)
+   :     +- Filter (2)
+   :        +- Scan parquet  (1)
+   +- Sort (10)
+      +- HashAggregate (9)
+         +- Exchange (8)
+            +- HashAggregate (7)
+               +- Filter (6)
+                  +- Scan parquet  (5)
+
+
+(1) Scan parquet 
+Output [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(customer_id)]
+ReadSchema: struct<order_id:bigint,customer_id:int,amount:double,order_date:date>
+
+(2) Filter
+Input [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+Condition : isnotnull(customer_id#23)
+
+(3) Exchange
+Input [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+Arguments: hashpartitioning(customer_id#23, 8), ENSURE_REQUIREMENTS, [plan_id=14281]
+
+(4) Sort
+Input [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+Arguments: [customer_id#23 ASC NULLS FIRST], false, 0
+
+(5) Scan parquet 
+Output [1]: [customer_id#2371]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int>
+
+(6) Filter
+Input [1]: [customer_id#2371]
+Condition : isnotnull(customer_id#2371)
+
+(7) HashAggregate
+Input [1]: [customer_id#2371]
+Keys [1]: [customer_id#2371]
+Functions: []
+Aggregate Attributes: []
+Results [1]: [customer_id#2371]
+
+(8) Exchange
+Input [1]: [customer_id#2371]
+Arguments: hashpartitioning(customer_id#2371, 8), ENSURE_REQUIREMENTS, [plan_id=14277]
+
+(9) HashAggregate
+Input [1]: [customer_id#2371]
+Keys [1]: [customer_id#2371]
+Functions: []
+Aggregate Attributes: []
+Results [1]: [customer_id#2371 AS cid#2368]
+
+(10) Sort
+Input [1]: [cid#2368]
+Arguments: [cid#2368 ASC NULLS FIRST], false, 0
+
+(11) SortMergeJoin
+Left keys [1]: [customer_id#23]
+Right keys [1]: [cid#2368]
+Join type: Inner
+Join condition: None
+
+(12) AdaptiveSparkPlan
+Output [5]: [order_id#22L, customer_id#23, amount#24, order_date#25, cid#2368]
+Arguments: isFinalPlan=false
+

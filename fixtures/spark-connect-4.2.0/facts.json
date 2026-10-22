@@ -1,0 +1,26 @@
+{
+  "session_class": "pyspark.sql.connect.session.SparkSession",
+  "has__jdf": false,
+  "executionInfo_before_action": "None",
+  "executionInfo_after_collect_type": "ExecutionInfo",
+  "executionInfo_node_count": 21,
+  "explain_after_collect_shows_final_plan": false,
+  "noop_write_seconds": 0.42,
+  "executionInfo_after_noop_write": "<pyspark.sql.metrics.ExecutionInfo object at 0x7f1640e23070>",
+  "executionInfo_after_noop_write_nodes": 0,
+  "observe_flows": [
+    [
+      "row_counter",
+      {
+        "rows": 5,
+        "sum_total": 24778815.352079198
+      }
+    ]
+  ],
+  "rest_reachable_from_client_host": true,
+  "rest_sql_descriptions": [
+    "Spark Connect - session_id: \"70227931-ba7d-470f-98bc-d2861dedb260\"\nplan {\n  root",
+    "Spark Connect - session_id: \"70227931-ba7d-470f-98bc-d2861dedb260\"\nplan {\n  comm",
+    "Spark Connect - session_id: \"70227931-ba7d-470f-98bc-d2861dedb260\"\nplan {\n  root"
+  ]
+}

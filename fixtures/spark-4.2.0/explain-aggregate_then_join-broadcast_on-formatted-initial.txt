@@ -1,0 +1,93 @@
+== Physical Plan ==
+AdaptiveSparkPlan (14)
++- HashAggregate (13)
+   +- Exchange (12)
+      +- HashAggregate (11)
+         +- Project (10)
+            +- BroadcastHashJoin Inner BuildRight (9)
+               :- HashAggregate (5)
+               :  +- Exchange (4)
+               :     +- HashAggregate (3)
+               :        +- Filter (2)
+               :           +- Scan parquet  (1)
+               +- BroadcastExchange (8)
+                  +- Filter (7)
+                     +- Scan parquet  (6)
+
+
+(1) Scan parquet 
+Output [2]: [customer_id#9, amount#10]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(amount), GreaterThan(amount,10.0), IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,amount:double>
+
+(2) Filter
+Input [2]: [customer_id#9, amount#10]
+Condition : ((isnotnull(amount#10) AND (amount#10 > 10.0)) AND isnotnull(customer_id#9))
+
+(3) HashAggregate
+Input [2]: [customer_id#9, amount#10]
+Keys [1]: [customer_id#9]
+Functions [2]: [partial_sum(amount#10), partial_count(1)]
+Aggregate Attributes [2]: [sum#52, count#53L]
+Results [3]: [customer_id#9, sum#54, count#55L]
+
+(4) Exchange
+Input [3]: [customer_id#9, sum#54, count#55L]
+Arguments: hashpartitioning(customer_id#9, 8), ENSURE_REQUIREMENTS, [plan_id=228]
+
+(5) HashAggregate
+Input [3]: [customer_id#9, sum#54, count#55L]
+Keys [1]: [customer_id#9]
+Functions [2]: [sum(amount#10), count(1)]
+Aggregate Attributes [2]: [sum(amount#10)#39, count(1)#38L]
+Results [3]: [customer_id#9, sum(amount#10)#39 AS total#32, count(1)#38L AS n#33L]
+
+(6) Scan parquet 
+Output [2]: [customer_id#12, segment#13]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/customers]
+PushedFilters: [IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,segment:string>
+
+(7) Filter
+Input [2]: [customer_id#12, segment#13]
+Condition : isnotnull(customer_id#12)
+
+(8) BroadcastExchange
+Input [2]: [customer_id#12, segment#13]
+Arguments: HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [plan_id=231]
+
+(9) BroadcastHashJoin
+Left keys [1]: [customer_id#9]
+Right keys [1]: [customer_id#12]
+Join type: Inner
+Join condition: None
+
+(10) Project
+Output [3]: [total#32, n#33L, segment#13]
+Input [5]: [customer_id#9, total#32, n#33L, customer_id#12, segment#13]
+
+(11) HashAggregate
+Input [3]: [total#32, n#33L, segment#13]
+Keys [1]: [segment#13]
+Functions [2]: [partial_sum(total#32), partial_sum(n#33L)]
+Aggregate Attributes [2]: [sum#48, sum#49L]
+Results [3]: [segment#13, sum#50, sum#51L]
+
+(12) Exchange
+Input [3]: [segment#13, sum#50, sum#51L]
+Arguments: hashpartitioning(segment#13, 8), ENSURE_REQUIREMENTS, [plan_id=236]
+
+(13) HashAggregate
+Input [3]: [segment#13, sum#50, sum#51L]
+Keys [1]: [segment#13]
+Functions [2]: [sum(total#32), sum(n#33L)]
+Aggregate Attributes [2]: [sum(total#32)#46, sum(n#33L)#47L]
+Results [3]: [segment#13, sum(total#32)#46 AS total#40, sum(n#33L)#47L AS n#41L]
+
+(14) AdaptiveSparkPlan
+Output [3]: [segment#13, total#40, n#41L]
+Arguments: isFinalPlan=false
+

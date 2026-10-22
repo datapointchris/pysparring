@@ -1,0 +1,35 @@
+== Physical Plan ==
+AdaptiveSparkPlan (6)
++- Project (5)
+   +- Window (4)
+      +- Sort (3)
+         +- Exchange (2)
+            +- Scan parquet  (1)
+
+
+(1) Scan parquet 
+Output [2]: [order_id#8L, amount#10]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+ReadSchema: struct<order_id:bigint,amount:double>
+
+(2) Exchange
+Input [2]: [order_id#8L, amount#10]
+Arguments: SinglePartition, ENSURE_REQUIREMENTS, [plan_id=13950]
+
+(3) Sort
+Input [2]: [order_id#8L, amount#10]
+Arguments: [amount#10 ASC NULLS FIRST], false, 0
+
+(4) Window
+Input [2]: [order_id#8L, amount#10]
+Arguments: [row_number() windowspecdefinition(amount#10 ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rn#1610], [amount#10 ASC NULLS FIRST]
+
+(5) Project
+Output [2]: [order_id#8L, rn#1610]
+Input [3]: [order_id#8L, amount#10, rn#1610]
+
+(6) AdaptiveSparkPlan
+Output [2]: [order_id#8L, rn#1610]
+Arguments: isFinalPlan=false
+

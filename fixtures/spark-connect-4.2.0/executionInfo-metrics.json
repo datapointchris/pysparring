@@ -1,0 +1,390 @@
+[
+  {
+    "name": "BroadcastExchange",
+    "plan_id": 270,
+    "parent_plan_id": 0,
+    "metrics": [
+      {
+        "name": "collectTime",
+        "value": 705,
+        "type": "timing"
+      },
+      {
+        "name": "buildTime",
+        "value": 49,
+        "type": "timing"
+      },
+      {
+        "name": "numOutputRows",
+        "value": 5000,
+        "type": "sum"
+      },
+      {
+        "name": "dataSize",
+        "value": 33594416,
+        "type": "size"
+      },
+      {
+        "name": "broadcastTime",
+        "value": 9,
+        "type": "timing"
+      }
+    ]
+  },
+  {
+    "name": "Exchange",
+    "plan_id": 315,
+    "parent_plan_id": 1,
+    "metrics": [
+      {
+        "name": "remoteReqsDuration",
+        "value": 0,
+        "type": "timing"
+      },
+      {
+        "name": "dataSize",
+        "value": 1920,
+        "type": "size"
+      },
+      {
+        "name": "mergedFetchFallbackCount",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "remoteBytesReadToDisk",
+        "value": 0,
+        "type": "size"
+      },
+      {
+        "name": "remoteMergedChunksFetched",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "corruptMergedBlockChunks",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "localMergedBlocksFetched",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "fetchWaitTime",
+        "value": 0,
+        "type": "timing"
+      },
+      {
+        "name": "numPartitions",
+        "value": 8,
+        "type": "sum"
+      },
+      {
+        "name": "localMergedChunksFetched",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "remoteMergedBlocksFetched",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "remoteMergedBytesRead",
+        "value": 0,
+        "type": "size"
+      },
+      {
+        "name": "shuffleBytesWritten",
+        "value": 4244,
+        "type": "size"
+      },
+      {
+        "name": "localBlocksFetched",
+        "value": 64,
+        "type": "sum"
+      },
+      {
+        "name": "recordsRead",
+        "value": 80,
+        "type": "sum"
+      },
+      {
+        "name": "localMergedBytesRead",
+        "value": 0,
+        "type": "size"
+      },
+      {
+        "name": "remoteMergedReqsDuration",
+        "value": 0,
+        "type": "timing"
+      },
+      {
+        "name": "shuffleRecordsWritten",
+        "value": 80,
+        "type": "sum"
+      },
+      {
+        "name": "localBytesRead",
+        "value": 4244,
+        "type": "size"
+      },
+      {
+        "name": "remoteBlocksFetched",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "remoteBytesRead",
+        "value": 0,
+        "type": "size"
+      },
+      {
+        "name": "shuffleWriteTime",
+        "value": 133303035,
+        "type": "nsTiming"
+      }
+    ]
+  },
+  {
+    "name": "WholeStageCodegen (3)",
+    "plan_id": 333,
+    "parent_plan_id": 2,
+    "metrics": [
+      {
+        "name": "pipelineTime",
+        "value": 223,
+        "type": "timing"
+      }
+    ]
+  },
+  {
+    "name": "Range",
+    "plan_id": 235,
+    "parent_plan_id": 236,
+    "metrics": [
+      {
+        "name": "numOutputRows",
+        "value": 500000,
+        "type": "sum"
+      }
+    ]
+  },
+  {
+    "name": "Project",
+    "plan_id": 236,
+    "parent_plan_id": 237,
+    "metrics": []
+  },
+  {
+    "name": "Range",
+    "plan_id": 238,
+    "parent_plan_id": 239,
+    "metrics": [
+      {
+        "name": "numOutputRows",
+        "value": 5000,
+        "type": "sum"
+      }
+    ]
+  },
+  {
+    "name": "AdaptiveSparkPlan",
+    "plan_id": 244,
+    "parent_plan_id": 244,
+    "metrics": []
+  },
+  {
+    "name": "ResultQueryStage",
+    "plan_id": 2,
+    "parent_plan_id": 244,
+    "metrics": []
+  },
+  {
+    "name": "Project",
+    "plan_id": 239,
+    "parent_plan_id": 269,
+    "metrics": []
+  },
+  {
+    "name": "WholeStageCodegen (1)",
+    "plan_id": 269,
+    "parent_plan_id": 270,
+    "metrics": [
+      {
+        "name": "pipelineTime",
+        "value": 94,
+        "type": "timing"
+      }
+    ]
+  },
+  {
+    "name": "BroadcastQueryStage",
+    "plan_id": 0,
+    "parent_plan_id": 310,
+    "metrics": []
+  },
+  {
+    "name": "Filter",
+    "plan_id": 237,
+    "parent_plan_id": 311,
+    "metrics": [
+      {
+        "name": "numOutputRows",
+        "value": 450436,
+        "type": "sum"
+      }
+    ]
+  },
+  {
+    "name": "InputAdapter",
+    "plan_id": 310,
+    "parent_plan_id": 311,
+    "metrics": []
+  },
+  {
+    "name": "BroadcastHashJoin",
+    "plan_id": 311,
+    "parent_plan_id": 312,
+    "metrics": [
+      {
+        "name": "numOutputRows",
+        "value": 450436,
+        "type": "sum"
+      }
+    ]
+  },
+  {
+    "name": "Project",
+    "plan_id": 312,
+    "parent_plan_id": 313,
+    "metrics": []
+  },
+  {
+    "name": "HashAggregate",
+    "plan_id": 313,
+    "parent_plan_id": 314,
+    "metrics": [
+      {
+        "name": "numTasksFallBacked",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "avgHashProbe",
+        "value": 0,
+        "type": "average"
+      },
+      {
+        "name": "aggTime",
+        "value": 1079,
+        "type": "timing"
+      },
+      {
+        "name": "peakMemory",
+        "value": 4194304,
+        "type": "size"
+      },
+      {
+        "name": "spillSize",
+        "value": 0,
+        "type": "size"
+      },
+      {
+        "name": "numOutputRows",
+        "value": 80,
+        "type": "sum"
+      }
+    ]
+  },
+  {
+    "name": "WholeStageCodegen (2)",
+    "plan_id": 314,
+    "parent_plan_id": 315,
+    "metrics": [
+      {
+        "name": "pipelineTime",
+        "value": 3286,
+        "type": "timing"
+      }
+    ]
+  },
+  {
+    "name": "ShuffleQueryStage",
+    "plan_id": 1,
+    "parent_plan_id": 329,
+    "metrics": []
+  },
+  {
+    "name": "AQEShuffleRead",
+    "plan_id": 329,
+    "parent_plan_id": 331,
+    "metrics": [
+      {
+        "name": "numPartitions",
+        "value": 1,
+        "type": "sum"
+      },
+      {
+        "name": "partitionDataSize",
+        "value": 4448,
+        "type": "size"
+      },
+      {
+        "name": "numCoalescedPartitions",
+        "value": 1,
+        "type": "sum"
+      },
+      {
+        "name": "numEmptyPartitions",
+        "value": 4,
+        "type": "sum"
+      }
+    ]
+  },
+  {
+    "name": "InputAdapter",
+    "plan_id": 331,
+    "parent_plan_id": 332,
+    "metrics": []
+  },
+  {
+    "name": "HashAggregate",
+    "plan_id": 332,
+    "parent_plan_id": 333,
+    "metrics": [
+      {
+        "name": "numTasksFallBacked",
+        "value": 0,
+        "type": "sum"
+      },
+      {
+        "name": "avgHashProbe",
+        "value": 10,
+        "type": "average"
+      },
+      {
+        "name": "aggTime",
+        "value": 8,
+        "type": "timing"
+      },
+      {
+        "name": "peakMemory",
+        "value": 1310704,
+        "type": "size"
+      },
+      {
+        "name": "spillSize",
+        "value": 0,
+        "type": "size"
+      },
+      {
+        "name": "numOutputRows",
+        "value": 5,
+        "type": "sum"
+      }
+    ]
+  }
+]

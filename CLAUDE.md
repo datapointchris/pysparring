@@ -9,6 +9,7 @@ clusters, and compares their outputs, physical plans and timing.
 pyproject.toml  the workspace, the release config, and every Python tool's config for both members
 library/        pysparring: imported as `pysparring`, Python >=3.11, no scripts
 cli/            pysparring-cli: imported as `pysparring_cli`, Python >=3.13, the `pysparring` command
+fixtures/       real Spark output both members' tests read, and the docker jobs that capture it
 ```
 
 - **The dependency runs one way: the CLI imports the library, never the reverse.** Typer and rich
@@ -48,4 +49,9 @@ task setup      # uv sync --all-packages
 task test       # pytest
 task lint       # ruff and mypy, writing nothing
 task build      # wheels and sdists into dist/
+
+fixtures/regenerate.sh [CAPTURE...]   # rewrite the fixtures from Spark runs in docker
 ```
+
+A test reads Spark's behavior from a fixture, never from a string written to look like Spark's
+output. `fixtures/README.md` lists what each capture holds.

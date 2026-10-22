@@ -1,0 +1,229 @@
+== Physical Plan ==
+AdaptiveSparkPlan (38)
++- == Final Plan ==
+   ResultQueryStage (24)
+   +- * HashAggregate (23)
+      +- AQEShuffleRead (22), coalesced
+         +- ShuffleQueryStage (21), Statistics(sizeInBytes=208.0 B, rowCount=5)
+            +- Exchange (20)
+               +- * HashAggregate (19)
+                  +- * Project (18)
+                     +- * SortMergeJoin Inner (17)
+                        :- * Sort (9)
+                        :  +- * HashAggregate (8)
+                        :     +- AQEShuffleRead (7), coalesced
+                        :        +- ShuffleQueryStage (6), Statistics(sizeInBytes=625.0 KiB, rowCount=2.00E+4)
+                        :           +- Exchange (5)
+                        :              +- * HashAggregate (4)
+                        :                 +- * Filter (3)
+                        :                    +- * ColumnarToRow (2)
+                        :                       +- Scan parquet  (1)
+                        +- * Sort (16)
+                           +- AQEShuffleRead (15), coalesced
+                              +- ShuffleQueryStage (14), Statistics(sizeInBytes=164.1 KiB, rowCount=5.00E+3)
+                                 +- Exchange (13)
+                                    +- * Filter (12)
+                                       +- * ColumnarToRow (11)
+                                          +- Scan parquet  (10)
++- == Initial Plan ==
+   HashAggregate (37)
+   +- Exchange (36)
+      +- HashAggregate (35)
+         +- Project (34)
+            +- SortMergeJoin Inner (33)
+               :- Sort (29)
+               :  +- HashAggregate (28)
+               :     +- Exchange (27)
+               :        +- HashAggregate (26)
+               :           +- Filter (25)
+               :              +- Scan parquet  (1)
+               +- Sort (32)
+                  +- Exchange (31)
+                     +- Filter (30)
+                        +- Scan parquet  (10)
+
+
+(1) Scan parquet 
+Output [2]: [customer_id#9, amount#10]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(amount), GreaterThan(amount,10.0), IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,amount:double>
+
+(2) ColumnarToRow [codegen id : 1]
+Input [2]: [customer_id#9, amount#10]
+
+(3) Filter [codegen id : 1]
+Input [2]: [customer_id#9, amount#10]
+Condition : ((isnotnull(amount#10) AND (amount#10 > 10.0)) AND isnotnull(customer_id#9))
+
+(4) HashAggregate [codegen id : 1]
+Input [2]: [customer_id#9, amount#10]
+Keys [1]: [customer_id#9]
+Functions [2]: [partial_sum(amount#10), partial_count(1)]
+Aggregate Attributes [2]: [sum#102, count#103L]
+Results [3]: [customer_id#9, sum#104, count#105L]
+
+(5) Exchange
+Input [3]: [customer_id#9, sum#104, count#105L]
+Arguments: hashpartitioning(customer_id#9, 8), ENSURE_REQUIREMENTS, [plan_id=687]
+
+(6) ShuffleQueryStage
+Output [3]: [customer_id#9, sum#104, count#105L]
+Arguments: 0
+
+(7) AQEShuffleRead
+Input [3]: [customer_id#9, sum#104, count#105L]
+Arguments: coalesced
+
+(8) HashAggregate [codegen id : 3]
+Input [3]: [customer_id#9, sum#104, count#105L]
+Keys [1]: [customer_id#9]
+Functions [2]: [sum(amount#10), count(1)]
+Aggregate Attributes [2]: [sum(amount#10)#89, count(1)#88L]
+Results [3]: [customer_id#9, sum(amount#10)#89 AS total#82, count(1)#88L AS n#83L]
+
+(9) Sort [codegen id : 3]
+Input [3]: [customer_id#9, total#82, n#83L]
+Arguments: [customer_id#9 ASC NULLS FIRST], false, 0
+
+(10) Scan parquet 
+Output [2]: [customer_id#12, segment#13]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/customers]
+PushedFilters: [IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,segment:string>
+
+(11) ColumnarToRow [codegen id : 2]
+Input [2]: [customer_id#12, segment#13]
+
+(12) Filter [codegen id : 2]
+Input [2]: [customer_id#12, segment#13]
+Condition : isnotnull(customer_id#12)
+
+(13) Exchange
+Input [2]: [customer_id#12, segment#13]
+Arguments: hashpartitioning(customer_id#12, 8), ENSURE_REQUIREMENTS, [plan_id=707]
+
+(14) ShuffleQueryStage
+Output [2]: [customer_id#12, segment#13]
+Arguments: 1
+
+(15) AQEShuffleRead
+Input [2]: [customer_id#12, segment#13]
+Arguments: coalesced
+
+(16) Sort [codegen id : 4]
+Input [2]: [customer_id#12, segment#13]
+Arguments: [customer_id#12 ASC NULLS FIRST], false, 0
+
+(17) SortMergeJoin [codegen id : 5]
+Left keys [1]: [customer_id#9]
+Right keys [1]: [customer_id#12]
+Join type: Inner
+Join condition: None
+
+(18) Project [codegen id : 5]
+Output [3]: [total#82, n#83L, segment#13]
+Input [5]: [customer_id#9, total#82, n#83L, customer_id#12, segment#13]
+
+(19) HashAggregate [codegen id : 5]
+Input [3]: [total#82, n#83L, segment#13]
+Keys [1]: [segment#13]
+Functions [2]: [partial_sum(total#82), partial_sum(n#83L)]
+Aggregate Attributes [2]: [sum#98, sum#99L]
+Results [3]: [segment#13, sum#100, sum#101L]
+
+(20) Exchange
+Input [3]: [segment#13, sum#100, sum#101L]
+Arguments: hashpartitioning(segment#13, 8), ENSURE_REQUIREMENTS, [plan_id=804]
+
+(21) ShuffleQueryStage
+Output [3]: [segment#13, sum#100, sum#101L]
+Arguments: 2
+
+(22) AQEShuffleRead
+Input [3]: [segment#13, sum#100, sum#101L]
+Arguments: coalesced
+
+(23) HashAggregate [codegen id : 6]
+Input [3]: [segment#13, sum#100, sum#101L]
+Keys [1]: [segment#13]
+Functions [2]: [sum(total#82), sum(n#83L)]
+Aggregate Attributes [2]: [sum(total#82)#96, sum(n#83L)#97L]
+Results [3]: [segment#13, sum(total#82)#96 AS total#90, sum(n#83L)#97L AS n#91L]
+
+(24) ResultQueryStage
+Output [3]: [segment#13, total#90, n#91L]
+Arguments: 3
+
+(25) Filter
+Input [2]: [customer_id#9, amount#10]
+Condition : ((isnotnull(amount#10) AND (amount#10 > 10.0)) AND isnotnull(customer_id#9))
+
+(26) HashAggregate
+Input [2]: [customer_id#9, amount#10]
+Keys [1]: [customer_id#9]
+Functions [2]: [partial_sum(amount#10), partial_count(1)]
+Aggregate Attributes [2]: [sum#102, count#103L]
+Results [3]: [customer_id#9, sum#104, count#105L]
+
+(27) Exchange
+Input [3]: [customer_id#9, sum#104, count#105L]
+Arguments: hashpartitioning(customer_id#9, 8), ENSURE_REQUIREMENTS, [plan_id=639]
+
+(28) HashAggregate
+Input [3]: [customer_id#9, sum#104, count#105L]
+Keys [1]: [customer_id#9]
+Functions [2]: [sum(amount#10), count(1)]
+Aggregate Attributes [2]: [sum(amount#10)#89, count(1)#88L]
+Results [3]: [customer_id#9, sum(amount#10)#89 AS total#82, count(1)#88L AS n#83L]
+
+(29) Sort
+Input [3]: [customer_id#9, total#82, n#83L]
+Arguments: [customer_id#9 ASC NULLS FIRST], false, 0
+
+(30) Filter
+Input [2]: [customer_id#12, segment#13]
+Condition : isnotnull(customer_id#12)
+
+(31) Exchange
+Input [2]: [customer_id#12, segment#13]
+Arguments: hashpartitioning(customer_id#12, 8), ENSURE_REQUIREMENTS, [plan_id=643]
+
+(32) Sort
+Input [2]: [customer_id#12, segment#13]
+Arguments: [customer_id#12 ASC NULLS FIRST], false, 0
+
+(33) SortMergeJoin
+Left keys [1]: [customer_id#9]
+Right keys [1]: [customer_id#12]
+Join type: Inner
+Join condition: None
+
+(34) Project
+Output [3]: [total#82, n#83L, segment#13]
+Input [5]: [customer_id#9, total#82, n#83L, customer_id#12, segment#13]
+
+(35) HashAggregate
+Input [3]: [total#82, n#83L, segment#13]
+Keys [1]: [segment#13]
+Functions [2]: [partial_sum(total#82), partial_sum(n#83L)]
+Aggregate Attributes [2]: [sum#98, sum#99L]
+Results [3]: [segment#13, sum#100, sum#101L]
+
+(36) Exchange
+Input [3]: [segment#13, sum#100, sum#101L]
+Arguments: hashpartitioning(segment#13, 8), ENSURE_REQUIREMENTS, [plan_id=650]
+
+(37) HashAggregate
+Input [3]: [segment#13, sum#100, sum#101L]
+Keys [1]: [segment#13]
+Functions [2]: [sum(total#82), sum(n#83L)]
+Aggregate Attributes [2]: [sum(total#82)#96, sum(n#83L)#97L]
+Results [3]: [segment#13, sum(total#82)#96 AS total#90, sum(n#83L)#97L AS n#91L]
+
+(38) AdaptiveSparkPlan
+Output [3]: [segment#13, total#90, n#91L]
+Arguments: isFinalPlan=true
+

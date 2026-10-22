@@ -1,0 +1,40 @@
+== Physical Plan ==
+Union (7)
+:- * Filter (3)
+:  +- * ColumnarToRow (2)
+:     +- Scan parquet  (1)
++- * Filter (6)
+   +- * ColumnarToRow (5)
+      +- Scan parquet  (4)
+
+
+(1) Scan parquet 
+Output [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(amount), GreaterThan(amount,90.0)]
+ReadSchema: struct<order_id:bigint,customer_id:int,amount:double,order_date:date>
+
+(2) ColumnarToRow [codegen id : 1]
+Input [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+
+(3) Filter [codegen id : 1]
+Input [4]: [order_id#22L, customer_id#23, amount#24, order_date#25]
+Condition : (isnotnull(amount#24) AND (amount#24 > 90.0))
+
+(4) Scan parquet 
+Output [4]: [order_id#2345L, customer_id#2346, amount#2347, order_date#2348]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(amount), LessThan(amount,10.0)]
+ReadSchema: struct<order_id:bigint,customer_id:int,amount:double,order_date:date>
+
+(5) ColumnarToRow [codegen id : 2]
+Input [4]: [order_id#2345L, customer_id#2346, amount#2347, order_date#2348]
+
+(6) Filter [codegen id : 2]
+Input [4]: [order_id#2345L, customer_id#2346, amount#2347, order_date#2348]
+Condition : (isnotnull(amount#2347) AND (amount#2347 < 10.0))
+
+(7) Union
+

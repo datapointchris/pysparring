@@ -1,0 +1,24 @@
+== Physical Plan ==
+* Project (4)
++- BatchEvalPython (3)
+   +- * ColumnarToRow (2)
+      +- Scan parquet  (1)
+
+
+(1) Scan parquet 
+Output [2]: [order_id#8L, amount#10]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+ReadSchema: struct<order_id:bigint,amount:double>
+
+(2) ColumnarToRow [codegen id : 1]
+Input [2]: [order_id#8L, amount#10]
+
+(3) BatchEvalPython
+Input [2]: [order_id#8L, amount#10]
+Arguments: [<lambda>(amount#10)#1606], [pythonUDF0#1628]
+
+(4) Project [codegen id : 2]
+Output [2]: [order_id#8L, pythonUDF0#1628 AS size#1607]
+Input [3]: [order_id#8L, amount#10, pythonUDF0#1628]
+

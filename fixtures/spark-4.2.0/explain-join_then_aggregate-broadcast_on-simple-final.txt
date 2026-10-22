@@ -1,0 +1,31 @@
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=true
++- == Final Plan ==
+   ResultQueryStage 2
+   +- *(3) HashAggregate(keys=[segment#13], functions=[sum(amount#10), count(1)])
+      +- AQEShuffleRead coalesced
+         +- ShuffleQueryStage 1
+            +- Exchange hashpartitioning(segment#13, 8), ENSURE_REQUIREMENTS, [plan_id=160]
+               +- *(2) HashAggregate(keys=[segment#13], functions=[partial_sum(amount#10), partial_count(1)])
+                  +- *(2) Project [amount#10, segment#13]
+                     +- *(2) BroadcastHashJoin [customer_id#9], [customer_id#12], Inner, BuildRight, false, false
+                        :- *(2) Filter ((isnotnull(amount#10) AND (amount#10 > 10.0)) AND isnotnull(customer_id#9))
+                        :  +- *(2) ColumnarToRow
+                        :     +- FileScan parquet [customer_id#9,amount#10] Batched: true, DataFilters: [isnotnull(amount#10), (amount#10 > 10.0), isnotnull(customer_id#9)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/pysparring-data/orders], PartitionFilters: [], PushedFilters: [IsNotNull(amount), GreaterThan(amount,10.0), IsNotNull(customer_id)], ReadSchema: struct<customer_id:int,amount:double>
+                        +- BroadcastQueryStage 0
+                           +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [plan_id=102]
+                              +- *(1) Filter isnotnull(customer_id#12)
+                                 +- *(1) ColumnarToRow
+                                    +- FileScan parquet [customer_id#12,segment#13] Batched: true, DataFilters: [isnotnull(customer_id#12)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/pysparring-data/customers], PartitionFilters: [], PushedFilters: [IsNotNull(customer_id)], ReadSchema: struct<customer_id:int,segment:string>
++- == Initial Plan ==
+   HashAggregate(keys=[segment#13], functions=[sum(amount#10), count(1)])
+   +- Exchange hashpartitioning(segment#13, 8), ENSURE_REQUIREMENTS, [plan_id=78]
+      +- HashAggregate(keys=[segment#13], functions=[partial_sum(amount#10), partial_count(1)])
+         +- Project [amount#10, segment#13]
+            +- BroadcastHashJoin [customer_id#9], [customer_id#12], Inner, BuildRight, false, false
+               :- Filter ((isnotnull(amount#10) AND (amount#10 > 10.0)) AND isnotnull(customer_id#9))
+               :  +- FileScan parquet [customer_id#9,amount#10] Batched: true, DataFilters: [isnotnull(amount#10), (amount#10 > 10.0), isnotnull(customer_id#9)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/pysparring-data/orders], PartitionFilters: [], PushedFilters: [IsNotNull(amount), GreaterThan(amount,10.0), IsNotNull(customer_id)], ReadSchema: struct<customer_id:int,amount:double>
+               +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [plan_id=73]
+                  +- Filter isnotnull(customer_id#12)
+                     +- FileScan parquet [customer_id#12,segment#13] Batched: true, DataFilters: [isnotnull(customer_id#12)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/tmp/pysparring-data/customers], PartitionFilters: [], PushedFilters: [IsNotNull(customer_id)], ReadSchema: struct<customer_id:int,segment:string>
+

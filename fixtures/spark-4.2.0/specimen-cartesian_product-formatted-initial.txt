@@ -1,0 +1,30 @@
+== Physical Plan ==
+CartesianProduct Inner (5)
+:- * ColumnarToRow (2)
+:  +- Scan parquet  (1)
++- * ColumnarToRow (4)
+   +- Scan parquet  (3)
+
+
+(1) Scan parquet 
+Output [2]: [customer_id#12, segment#13]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/customers]
+ReadSchema: struct<customer_id:int,segment:string>
+
+(2) ColumnarToRow [codegen id : 1]
+Input [2]: [customer_id#12, segment#13]
+
+(3) Scan parquet 
+Output [2]: [customer_id#1608, segment#1609]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/customers]
+ReadSchema: struct<customer_id:int,segment:string>
+
+(4) ColumnarToRow [codegen id : 2]
+Input [2]: [customer_id#1608, segment#1609]
+
+(5) CartesianProduct
+Join type: Inner
+Join condition: None
+

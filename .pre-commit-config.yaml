@@ -1,6 +1,7 @@
 # forge-toolchain: 51
 fail_fast: true
 default_stages: [pre-commit]
+exclude: ^fixtures/spark-[^/]+/
 repos:
 
 # generated:conventional-commits - Conventional commits

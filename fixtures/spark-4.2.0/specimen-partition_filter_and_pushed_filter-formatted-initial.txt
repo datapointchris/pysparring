@@ -1,0 +1,21 @@
+== Physical Plan ==
+* Filter (3)
++- * ColumnarToRow (2)
+   +- Scan parquet  (1)
+
+
+(1) Scan parquet 
+Output [4]: [order_id#1617L, customer_id#1618, amount#1619, order_date#1620]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders_by_date]
+PartitionFilters: [isnotnull(order_date#1620), (order_date#1620 = 2026-03-01)]
+PushedFilters: [IsNotNull(amount), GreaterThan(amount,50.0)]
+ReadSchema: struct<order_id:bigint,customer_id:int,amount:double>
+
+(2) ColumnarToRow [codegen id : 1]
+Input [4]: [order_id#1617L, customer_id#1618, amount#1619, order_date#1620]
+
+(3) Filter [codegen id : 1]
+Input [4]: [order_id#1617L, customer_id#1618, amount#1619, order_date#1620]
+Condition : (isnotnull(amount#1619) AND (amount#1619 > 50.0))
+
