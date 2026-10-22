@@ -24,12 +24,16 @@ CODES = {
 
 @dc.dataclass(frozen=True)
 class Problem:
-    """One reason to refuse, located by a dotted path into the experiment as it is written."""
+    """One reason to refuse, located by a dotted path into the experiment as it is written.
+
+    `valid` holds the values the field accepts, where they are a closed set.
+    """
 
     code: str
     path: str
     message: str
     hint: str | None = None
+    valid: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.code not in CODES:

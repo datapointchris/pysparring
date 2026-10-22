@@ -77,7 +77,10 @@ def copy_capture(source: Path, target: Path) -> None:
 
 def write_static_conf_keys(source: Path, target: Path) -> None:
     """The keys any captured Spark refuses at runtime, merged into the list the library ships."""
-    keys = {line for path in source.glob('*.txt') for line in path.read_text().splitlines() if line}
+    lists = sorted(source.glob('*.txt'))
+    if not lists or any(path.stat().st_size == 0 for path in lists):
+        sys.exit(f'copy_committed_subset.py: {source} holds no static conf list, or an empty one')
+    keys = {line for path in lists for line in path.read_text().splitlines() if line}
     target.write_text('\n'.join(sorted(keys)) + '\n')
 
 

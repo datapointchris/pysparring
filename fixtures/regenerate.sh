@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Regenerate the Spark fixtures. Runs job/capture_plans.py under each Spark image and
-# job/connect_probe.py against a Spark Connect server, then copies the files the tests read into
-# spark-3.5.9/, spark-4.2.0/ and spark-connect-4.2.0/ beside this script.
+# Regenerate the Spark fixtures. Runs job/capture_plans.py under each Spark image,
+# job/connect_probe.py against a Spark Connect server and job/list_static_confs.py under each Spark
+# image, then copies the files the tests read into a directory per capture beside this script.
 #
 #   fixtures/regenerate.sh              every capture
 #   fixtures/regenerate.sh CAPTURE...   only these, e.g. spark-4.2.0
@@ -11,9 +11,20 @@
 # captures reach Maven Central for sparkMeasure's jar.
 set -euo pipefail
 
-readonly CAPTURES=(spark-3.5.9 spark-4.2.0 spark-connect-4.2.0 static-conf-keys)
-readonly SPARK_3=apache/spark:3.5.9-python3
-readonly SPARK_4=apache/spark:4.2.0-python3
+# Each Spark release the classic and static-conf-keys captures run, as VERSION:SCALA, where SCALA
+# is the Scala binary version its image was built with.
+readonly SPARK_RELEASES=(3.5.9:2.12 4.2.0:2.13)
+readonly CONNECT_RELEASE=4.2.0
+
+captures=()
+for release in "${SPARK_RELEASES[@]}"; do
+  captures+=("spark-${release%%:*}")
+done
+readonly CAPTURES=("${captures[@]}" "spark-connect-$CONNECT_RELEASE" static-conf-keys)
+
+spark_image() {
+  echo "apache/spark:$1-python3"
+}
 
 # sparkMeasure's Python half, and the release of the jar it drives.
 readonly SPARKMEASURE_PYTHON=sparkmeasure==0.28.0
@@ -48,21 +59,33 @@ in_container() {
     /job/run-and-hand-back-output.sh "$@"
 }
 
+# main calls this as an if condition, where set -e does not reach, so each step returns its own
+# failure.
 run_capture() {
+  local release version
   case $1 in
-    spark-3.5.9)
-      capture_classic "$SPARK_3" 2.12
-      ;;
-    spark-4.2.0)
-      capture_classic "$SPARK_4" 2.13
-      ;;
-    spark-connect-4.2.0)
-      in_container "$SPARK_4" bash /job/run-connect-probe.sh "${CONNECT_CLIENT_PACKAGES[@]}"
-      ;;
     static-conf-keys)
-      mkdir -p "$work/static-conf-keys"
-      in_container "$SPARK_3" /opt/spark/bin/spark-submit /job/list_static_confs.py /out/static-conf-keys/3.5.9.txt
-      in_container "$SPARK_4" /opt/spark/bin/spark-submit /job/list_static_confs.py /out/static-conf-keys/4.2.0.txt
+      mkdir -p "$work/static-conf-keys" || return
+      for release in "${SPARK_RELEASES[@]}"; do
+        version=${release%%:*}
+        in_container "$(spark_image "$version")" /opt/spark/bin/spark-submit \
+          /job/list_static_confs.py "/out/static-conf-keys/$version.txt" || return
+        if [ ! -s "$work/static-conf-keys/$version.txt" ]; then
+          echo "regenerate.sh: Spark $version listed no static conf key" >&2
+          return 1
+        fi
+      done
+      ;;
+    spark-connect-*)
+      in_container "$(spark_image "${1#spark-connect-}")" bash /job/run-connect-probe.sh "${CONNECT_CLIENT_PACKAGES[@]}"
+      ;;
+    spark-*)
+      for release in "${SPARK_RELEASES[@]}"; do
+        if [ "spark-${release%%:*}" = "$1" ]; then
+          capture_classic "$(spark_image "${release%%:*}")" "${release#*:}"
+          return
+        fi
+      done
       ;;
   esac
 }

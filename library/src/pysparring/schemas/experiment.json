@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "pysparring experiment definition, schema version 1",
-  "description": "The resolved definition Experiment.definition() returns and definition_sha256 hashes. Local paths are absolute, each candidate carries its import path and a hash of its source, and each section holds every field with its default filled in.",
+  "description": "The definition Experiment.definition() returns and definition_sha256 hashes. A local path under the experiment's root is relative to it, each candidate is named by its import path, and each section holds every field with its default filled in.",
   "type": "object",
   "required": ["schema_version", "candidates", "datasets", "confs", "clusters", "compare", "timing", "baseline", "expect"],
   "additionalProperties": false,
@@ -24,7 +24,7 @@
       }
     },
     "confs": {
-      "description": "Each conf overlay by name, applied with spark.conf.set between runs on one session.",
+      "description": "Each conf overlay by name, set with spark.conf.set on a running session.",
       "type": "object",
       "minProperties": 1,
       "additionalProperties": { "$ref": "#/$defs/conf_values" }
@@ -38,23 +38,23 @@
     "compare": { "$ref": "#/$defs/compare" },
     "timing": { "$ref": "#/$defs/timing" },
     "baseline": {
-      "description": "The cell the rank-stability table compares every other cell to.",
+      "description": "The cell the other cells are ranked against.",
       "type": "object",
       "required": ["cell"],
       "additionalProperties": false,
       "properties": {
-        "cell": { "type": "string", "pattern": "^[^/]+/[^@]+@.+$" }
+        "cell": { "description": "A cell id, dataset/conf@cluster.", "type": "string", "pattern": "^[^/@.]+/[^/@.]+@[^/@.]+$" }
       }
     },
     "expect": {
-      "description": "Promises the experiment declares, which a run certifies.",
+      "description": "Promises the experiment declares about its own results.",
       "type": "object"
     }
   },
   "$defs": {
     "candidate": {
       "type": "object",
-      "required": ["ref", "kwargs", "tables", "source_sha256"],
+      "required": ["ref", "kwargs", "tables"],
       "additionalProperties": false,
       "properties": {
         "ref": { "description": "The import path, module:qualname.", "type": "string", "pattern": "^[^:]+:.+$" },
@@ -63,11 +63,6 @@
           "description": "The parameters without a default, each naming a table in every dataset.",
           "type": "array",
           "items": { "type": "string" }
-        },
-        "source_sha256": {
-          "description": "The SHA-256 of the function's source text, or null where Python cannot read it.",
-          "type": ["string", "null"],
-          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -79,7 +74,10 @@
           "additionalProperties": false,
           "properties": {
             "kind": { "const": "path" },
-            "path": { "description": "An absolute local path, or a remote URI as written.", "type": "string" },
+            "path": {
+              "description": "A local path relative to the experiment's root, an absolute local path outside it, or a remote URI as written.",
+              "type": "string"
+            },
             "format": { "description": "The Spark source format.", "type": "string" }
           }
         },
@@ -94,25 +92,23 @@
         },
         {
           "type": "object",
-          "required": ["kind", "profile", "profile_sha256", "scenario", "scenario_sha256", "rows", "seed"],
+          "required": ["kind", "profile", "scenario", "rows", "seed"],
           "additionalProperties": false,
           "properties": {
             "kind": { "const": "doppeldata" },
-            "profile": { "type": "string" },
-            "profile_sha256": { "$ref": "#/$defs/sha256" },
+            "profile": { "description": "A path, written as a path table's is.", "type": "string" },
             "scenario": { "type": ["string", "null"] },
-            "scenario_sha256": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
             "rows": { "type": "integer", "minimum": 1 },
             "seed": { "type": "integer", "minimum": 0 }
           }
         },
         {
+          "description": "A DataFrame handed to the SDK. Nothing about it is part of the definition but its place.",
           "type": "object",
-          "required": ["kind", "semantic_hash"],
+          "required": ["kind"],
           "additionalProperties": false,
           "properties": {
-            "kind": { "const": "dataframe" },
-            "semantic_hash": { "description": "Spark's DataFrame.semanticHash() of the logical plan.", "type": "integer" }
+            "kind": { "const": "dataframe" }
           }
         }
       ]
@@ -134,7 +130,7 @@
         "workers": { "type": ["integer", "null"], "minimum": 1 },
         "execution_class": { "type": "string" },
         "static_conf": {
-          "description": "Confs fixed when the session starts, which a conf overlay cannot set.",
+          "description": "Confs a session takes only when it starts, which a conf overlay cannot set.",
           "$ref": "#/$defs/conf_values"
         },
         "region": { "type": ["string", "null"] }
@@ -145,7 +141,7 @@
       "required": ["reference", "keys", "rel_tol", "abs_tol", "exclude_columns"],
       "additionalProperties": false,
       "properties": {
-        "reference": { "description": "The candidate outputs and ratios are taken against.", "type": "string" },
+        "reference": { "description": "The candidate the others are compared against.", "type": "string" },
         "keys": { "type": "array", "items": { "type": "string" } },
         "rel_tol": { "type": "number", "minimum": 0 },
         "abs_tol": { "type": "number", "minimum": 0 },
@@ -162,10 +158,9 @@
         "order": { "enum": ["interleaved", "sequential"] },
         "seed": { "type": "integer" },
         "alpha": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
-        "min_effect": { "description": "The slower arm's time over the faster's below which no difference is reported.", "type": "number", "minimum": 1 },
-        "underpowered": { "description": "Whether rounds may be too few for the test to reach alpha, which labels every verdict.", "type": "boolean" }
+        "min_effect": { "description": "The smallest ratio of the slower arm's time to the faster's that counts as a difference.", "type": "number", "minimum": 1 },
+        "underpowered": { "description": "Whether rounds may be fewer than the significance test needs to reach alpha.", "type": "boolean" }
       }
-    },
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+    }
   }
 }

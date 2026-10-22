@@ -37,6 +37,13 @@ def root(
     """Run PySpark transform candidates against each other, and compare their outputs, plans and timing."""
 
 
+@schema_app.command('list')
+def schema_list() -> None:
+    """List the name of every schema pysparring ships, one per line."""
+    for name in schema_names():
+        typer.echo(name)
+
+
 @schema_app.command('show', no_args_is_help=True)
 def schema_show(
     name: Annotated[str, typer.Argument(metavar='NAME', help=f'A schema name: {", ".join(schema_names())}.', show_default=False)],

@@ -26,9 +26,9 @@ docs/           the design pages
   3.11 from a wheel. An optional engine is imported lazily and declared nowhere, and its
   missing-import error names the distribution to install.
 - **The JSON Schemas in `library/src/pysparring/schemas/` are written by hand.** A test validates
-  an `Experiment.definition()` against `experiment.json`, which refuses unknown fields. That
-  definition holds path and catalog tables only, so a doppeldata or DataFrame table's shape is
-  checked against the schema by reading. jsonschema is a dev dependency only.
+  an `Experiment.definition()` against `experiment.json`, which refuses unknown fields, and checks
+  the schema's enums and required fields against the model. A table kind the test's experiment
+  does not declare is checked against the schema by reading. jsonschema is a dev dependency only.
 - **Every refusal code is registered in `refusals.CODES`.** A code never changes meaning, and a
   retired one is never reused.
 - **`static_conf_keys.txt` is written by `fixtures/regenerate.sh static-conf-keys`**, never by hand.
