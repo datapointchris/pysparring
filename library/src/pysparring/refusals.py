@@ -24,13 +24,13 @@ CODES = {
 
 @dc.dataclass(frozen=True)
 class Problem:
-    """One reason to refuse, located by a dotted path into the experiment as it is written.
+    """One reason to refuse. `field` is the dotted path into the experiment as it is written.
 
     `valid` holds the values the field accepts, where they are a closed set.
     """
 
     code: str
-    path: str
+    field: str
     message: str
     hint: str | None = None
     valid: tuple[str, ...] = ()
@@ -48,5 +48,5 @@ class Refused(ValueError):
 
     def __init__(self, problems: list[Problem]) -> None:
         self.problems = problems
-        lines = [f'{problem.code} {problem.path}: {problem.message}' for problem in problems]
+        lines = [f'{problem.code} {problem.field}: {problem.message}' for problem in problems]
         super().__init__('\n'.join(lines))

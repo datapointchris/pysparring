@@ -150,7 +150,7 @@ cell = "nowhere/default@local"
     with pytest.raises(Refused) as refused:
         Experiment.from_toml(root / 'experiment.toml')
 
-    assert sorted((problem.code, problem.path) for problem in refused.value.problems) == [
+    assert sorted((problem.code, problem.field) for problem in refused.value.problems) == [
         ('E-BINDING-001', 'candidates.bad_kwarg.customers'),
         ('E-BINDING-001', 'candidates.good.customers'),
         ('E-BINDING-002', 'candidates.exits'),
@@ -167,5 +167,5 @@ cell = "nowhere/default@local"
         ('E-EXPERIMENT-005', 'datasets.orders_only.orders'),
         ('E-EXPERIMENT-006', 'datasets.synthetic.orders'),
     ]
-    binding = next(problem for problem in refused.value.problems if problem.path == 'candidates.good.customers')
+    binding = next(problem for problem in refused.value.problems if problem.field == 'candidates.good.customers')
     assert binding.valid == ('orders',)

@@ -18,7 +18,7 @@ An experiment declares candidates, datasets, confs and clusters. Nothing is disc
 A cell is one (dataset, conf, cluster), and its id reads `dataset/conf@cluster`. An arm is one
 candidate inside a cell, and arms are compared within a cell. `baseline.cell` names the cell the
 others are ranked against, and defaults to the first. A name may not hold `/`, `@` or `.`, so a cell
-id and a problem's path each read one way.
+id and a problem's `field` each read one way.
 
 ## The TOML file and the SDK object take the same sections
 
@@ -39,6 +39,8 @@ directory in the SDK. A module that is not under the root imports as usual.
 So a module beside the experiment file imports without being installed. An edit made since the last
 build in the same process is what binds. Two experiments whose directories each hold a
 `pipelines.py` each bind their own. A `json.py` beside one shadows nothing once the build returns.
+A module the candidate's module imports in turn is not read again, so an edit to a helper beside it
+binds in a new process.
 
 ## Everything a run could fail on is refused together, before the first Spark call
 
@@ -47,8 +49,9 @@ and checks every overlay and timing field. It raises `Refused` holding every pro
 pass fixes them all. A candidate module that raises at import, even `SystemExit`, is a problem, as
 is a file that cannot be read.
 
-Each problem carries a code, a dotted path into the experiment as written, a message, an optional
-hint, and `valid`, the values the field accepts where they are a closed set. `refusals.CODES`
+Each problem carries a code, `field`, a message, an optional hint, and `valid`. `field` is the
+dotted path into the experiment as written. `valid` holds the values the field accepts, where they
+are a closed set. `refusals.CODES`
 registers each code. A code never changes meaning, and a retired code is never reused.
 
 Names that failed still count as declared. A table whose source failed still binds, and a candidate
@@ -87,7 +90,7 @@ and the refusal names the fewest rounds that can. `timing.underpowered = true` l
 `Experiment.definition()` is JSON. A local path under the experiment's root is relative to it,
 each candidate is named by its import path, and every section field holds its value with defaults
 filled in. A kwarg or `expect` value must come back unchanged from JSON, so the definition never
-holds a value's `repr`. `schemas/experiment.json` describes it, and `pysparring schema show
+holds a value's `repr`. `schemas/experiment.json` describes it, and `pysparring schemas show
 experiment` prints that schema.
 
 `definition_sha256` hashes the definition's JSON with sorted keys and no whitespace. So one

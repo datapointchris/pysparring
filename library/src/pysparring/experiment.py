@@ -48,7 +48,7 @@ FORMATS_BY_SUFFIX = {
 DEFAULT_FORMAT = 'parquet'
 REMOTE_PREFIXES = ('s3://', 's3a://', 's3n://', 'gs://', 'abfss://', 'hdfs://', 'dbfs:/')
 TABLE_PARAMETER_KINDS = (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
-# A cell id joins names with `/` and `@`, and a problem's path joins them with `.`.
+# A cell id joins names with `/` and `@`, and a problem's field joins them with `.`.
 NAME_SEPARATORS = ('/', '@', '.')
 
 

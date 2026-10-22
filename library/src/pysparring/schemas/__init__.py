@@ -1,4 +1,4 @@
-"""The JSON Schemas pysparring ships, each read by the name `pysparring schema show` takes."""
+"""The JSON Schemas pysparring ships, each read by the name `pysparring schemas show` takes."""
 
 import importlib.resources
 

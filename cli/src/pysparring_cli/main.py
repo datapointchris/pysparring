@@ -7,8 +7,8 @@ from pysparring.schemas import schema_names
 from pysparring.schemas import schema_text
 
 app = typer.Typer(no_args_is_help=True)
-schema_app = typer.Typer(no_args_is_help=True, help='The JSON Schemas pysparring ships, so a program can check a document it reads.')
-app.add_typer(schema_app, name='schema')
+schemas_app = typer.Typer(no_args_is_help=True, help='The JSON Schemas pysparring ships, so a program can check a document it reads.')
+app.add_typer(schemas_app, name='schemas')
 
 
 def installed_commit() -> str | None:
@@ -37,15 +37,15 @@ def root(
     """Run PySpark transform candidates against each other, and compare their outputs, plans and timing."""
 
 
-@schema_app.command('list')
-def schema_list() -> None:
+@schemas_app.command('list')
+def schemas_list() -> None:
     """List the name of every schema pysparring ships, one per line."""
     for name in schema_names():
         typer.echo(name)
 
 
-@schema_app.command('show', no_args_is_help=True)
-def schema_show(
+@schemas_app.command('show', no_args_is_help=True)
+def schemas_show(
     name: Annotated[str, typer.Argument(metavar='NAME', help=f'A schema name: {", ".join(schema_names())}.', show_default=False)],
 ) -> None:
     """Print one JSON Schema, draft 2020-12."""
