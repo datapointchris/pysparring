@@ -12,6 +12,35 @@ Inputs can be Parquet files, DataFrames, or synthetic datasets generated from a 
 such as heavy key skew or a share of malformed rows shows whether the winner changes when the data
 does.
 
+## Status
+
+Experimental, and not yet runnable. `pysparring --version` is the whole command line so far.
+
+## Install
+
+pysparring installs into the project whose transforms it compares, so a run uses that project's
+pyspark. It never installs pyspark itself.
+
+```bash
+uv add --dev --index https://pypi.ichrisbirch.com/simple/ pysparring-cli
+uv run pysparring --version
+```
+
+Every release is published to that package index, and nothing else is. The `pysparring-cli`
+distribution is the command and needs Python 3.13 or later. The `pysparring` library it pins needs
+Python 3.11 or later, the Python an AWS Glue 5.0 or 5.1 driver runs.
+
+## Develop
+
+```bash
+task setup      # install both distributions into .venv
+task test
+task lint
+```
+
+`library/` holds the `pysparring` library and `cli/` the `pysparring-cli` command, under one uv
+workspace. Both release together from one tag.
+
 ## License
 
 MIT

@@ -1,0 +1,44 @@
+version: "3"
+
+tasks:
+  default:
+    desc: List the available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install both distributions into the workspace's virtualenv
+    cmds:
+      - uv sync --all-packages
+
+  build:
+    desc: Build both distributions' wheels and sdists into dist/
+    cmds:
+      - uv build --package pysparring --out-dir dist
+      - uv build --package pysparring-cli --out-dir dist
+
+  test:
+    desc: Run the test suite
+    cmds:
+      # pytest exits 5 when it collects nothing, which a member with no tests
+      # yet is not a failure of.
+      - uv run pytest || test $? -eq 5
+
+  lint:
+    desc: Run every check without writing any file
+    cmds:
+      - uv run ruff format --check .
+      - uv run ruff check .
+      - task: typecheck
+
+  typecheck:
+    desc: Type check both distributions with mypy
+    cmds:
+      - uv run mypy .
+
+  format:
+    desc: Apply ruff's formatting and autofixes
+    cmds:
+      - uv run ruff format .
+      - uv run ruff check --fix .

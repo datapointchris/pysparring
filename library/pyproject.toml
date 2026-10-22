@@ -1,0 +1,49 @@
+[project]
+name = "pysparring"
+dynamic = ["version"]
+description = "Run PySpark transform candidates against each other across datasets, Spark configurations and clusters, and compare their outputs, physical plans and timing."
+authors = [{ name = "Chris Birch", email = "chrisbirch@fastmail.com" }]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+keywords = ["spark", "pyspark", "benchmark", "performance", "glue"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+]
+
+# The harness runs on an AWS Glue 5.0 or 5.1 driver, which is Python 3.11.
+requires-python = ">=3.11"
+# pyspark is never declared. The user's environment supplies the one that
+# matches its cluster, and declaring any would install a second over it.
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/datapointchris/pysparring"
+Issues = "https://github.com/datapointchris/pysparring/issues"
+Changelog = "https://github.com/datapointchris/pysparring/releases"
+
+# The release tag is the version. python-semantic-release finds no file to
+# stamp, so it tags the merge commit itself and writes no release commit.
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+style = "semver"
+
+# A new commit or tag changes the version, so it has to invalidate uv's cache.
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+
+# The published sdist holds the package and its metadata, and none of the
+# repo's tooling or tests.
+[tool.hatch.build.targets.sdist]
+only-include = ["src"]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"

@@ -1,0 +1,57 @@
+[project]
+name = "pysparring-cli"
+dynamic = ["version", "dependencies"]
+description = "Command line for pysparring: run candidates, then diff their plans and outputs and show the report."
+authors = [{ name = "Chris Birch", email = "chrisbirch@fastmail.com" }]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+keywords = ["spark", "pyspark", "benchmark", "performance", "cli"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Distributed Computing",
+]
+requires-python = ">=3.13"
+
+[project.scripts]
+pysparring = "pysparring_cli.main:app"
+
+[project.urls]
+Repository = "https://github.com/datapointchris/pysparring"
+Issues = "https://github.com/datapointchris/pysparring/issues"
+Changelog = "https://github.com/datapointchris/pysparring/releases"
+
+# The library is pinned to this release's own version, so a CLI and a library
+# from different releases cannot install together.
+[tool.hatch.metadata.hooks.uv-dynamic-versioning]
+dependencies = [
+    "pysparring=={{ version }}",
+    "typer>=0.27.0",
+]
+
+[tool.uv.sources]
+pysparring = { workspace = true }
+
+# The release tag is the version, read the same way as the library's.
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+style = "semver"
+
+# A new commit or tag changes the version, so it has to invalidate uv's cache.
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+
+# The published sdist holds the package and its metadata, and none of the
+# repo's tooling or tests.
+[tool.hatch.build.targets.sdist]
+only-include = ["src"]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
