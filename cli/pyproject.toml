@@ -1,7 +1,7 @@
 [project]
 name = "pysparring-cli"
 dynamic = ["version", "dependencies"]
-description = "Command line for pysparring: run candidates, then diff their plans and outputs and show the report."
+description = "The pysparring command line."
 authors = [{ name = "Chris Birch", email = "chrisbirch@fastmail.com" }]
 license = "MIT"
 license-files = ["LICENSE"]
