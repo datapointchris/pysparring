@@ -29,32 +29,38 @@ the first.
   `BroadcastHashJoin`.
 - It never names a winner from a plan. Spark's explain carries no total cost, and a plan with more
   operators can run faster, because it shuffles fewer bytes.
-- `runs=5` or more times each DataFrame with a no-op write: two discarded warm-up rounds, then every
+- `runs=5` or more times each DataFrame with a no-op write: three discarded warm-up rounds, then every
   round in a shuffled order. A DataFrame is called faster only when an exact Mann-Whitney U test gives
   p < 0.01 and its median is at least 1.1x better. Otherwise the report reads "no clear difference".
+- The plan diff prints before the timing starts.
+- The session's cache is left alone. A DataFrame built on a cached table is timed reading the cache,
+  and the report says so.
 
 The returned `PlanComparison` holds the plans, the diffs, the operator counts, the run times and the
-verdicts.
+verdicts, each keyed by name.
 
 ## `compare_outputs` says which columns differ and how
 
-`compare_outputs(a, b, keys=None, names=('a', 'b'), rel_tol=1e-9, abs_tol=0.0, ignore_columns=(), sample_rows=5)`
+`compare_outputs(a, b, keys=None, names=('df1', 'df2'), rel_tol=1e-9, abs_tol=0.0, ignore_columns=(), sample_rows=5)`
 reports, in order:
 
 - **Schema**: columns found on one side only, and type changes. A changed column is still compared,
   after casting both sides to one type.
-- **Rows**: the count on each side. With `keys`, also how many rows matched, how many are on one side
-  only, and how many keys appear more than once.
+- **Rows**: the count on each side, and how many are on one side only. With `keys`, also how many
+  rows matched and how many keys appear more than once. Without keys, a row pairs with one that has
+  the same values in every other column, and floats and doubles within the tolerance.
 - **Columns**: with `keys`, each column's mismatches on the matched rows, the nulls found on only one
-  side, and its largest absolute difference. A float or double matches when
-  `|a - b| <= abs_tol + rel_tol * |b|`, so two aggregations that sum in a different order still match.
-  Without keys, each column's null count, distinct count, min, max and sum, where they differ. A
-  float statistic inside the tolerance counts as the same.
+  side, and its largest absolute difference. Without keys, each column's null count, approximate
+  distinct count, min, max and sum, where they differ.
 - **Samples**: differing values side by side, then rows found on only one side.
 
-Row order, column order and nullability are ignored. Everything runs on Spark, and only the samples
-reach the driver. The returned `OutputComparison` has `.matches`, and `.assert_matches()` raises an
-`AssertionError` carrying the whole report, so a test can gate a refactor:
+A float or double matches when `|a - b| <= abs_tol + rel_tol * |b|`, so two aggregations that sum in
+a different order still match. Row order, column order and nullability are ignored. Everything runs
+on Spark, and only counts and samples reach the driver.
+
+The returned `OutputComparison` has `.matches`, and a field ending in `_a` or `_b` describes
+`names[0]` or `names[1]`. `.assert_matches()` raises an `AssertionError` carrying the whole report,
+so a test can gate a refactor:
 
 ```python
 def test_refactor_keeps_the_output(spark):
@@ -90,7 +96,8 @@ def test_refactor_keeps_the_output(spark):
 ## Install
 
 pysparring installs into the environment whose Spark it compares on, and never installs pyspark.
-It needs Python 3.11 or later, and rich.
+It needs Python 3.11 or later, and rich. The AWS Glue 5 image runs Python 3.11. The official
+`apache/spark` images run Python 3.10, so it does not install there.
 
 ```bash
 uv add --dev --index https://pypi.ichrisbirch.com/simple/ pysparring

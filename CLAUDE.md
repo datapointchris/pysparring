@@ -4,9 +4,9 @@ A Python library of two functions over PySpark DataFrames. `compare_plans` diffs
 times them, and `compare_outputs` says which columns of two outputs differ and how. `docs/README.md`
 indexes why each is shaped the way it is.
 
-## v1 is these two functions, and its scope is closed
+## The library is these two functions, and its scope is closed
 
-Not in v1: experiment files, a CLI, clusters and backends, S3 staging, cost, generated scenario
+Not in scope: experiment files, a CLI, clusters and backends, S3 staging, cost, generated scenario
 datasets, heuristic rules, saved reports, runtime metrics, the final adaptive plan, one transform
 under several confs, guessing keys, diffs inside struct and array columns, and HTML output. A
 feature is not added because it looks useful. It waits until using the two functions shows the
@@ -26,10 +26,11 @@ docs/             why the design is what it is
 - **rich is the one dependency.** It prints color in a terminal or notebook, and plain text in a log
   or an assertion message.
 - **The code runs on Python 3.11**, the Python an AWS Glue 5.0 or 5.1 driver runs.
-  `.python-version` pins the workspace there, so a later feature fails locally and in CI.
+  `.python-version` pins the project there, so a later feature fails locally and in CI.
 - **A test reads Spark's behavior from a fixture**, never from a string written to look like Spark's
   output. Behavior that needs a live session is verified by running it in the Spark images, not by
-  a committed test.
+  a committed test. The `apache/spark` images run Python 3.10, so a run there installs Ubuntu's
+  `python3.11` first and points `PYSPARK_PYTHON` at it.
 
 ## Commands
 
