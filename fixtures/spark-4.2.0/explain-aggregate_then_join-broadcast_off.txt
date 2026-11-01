@@ -1,0 +1,104 @@
+== Physical Plan ==
+AdaptiveSparkPlan (16)
++- HashAggregate (15)
+   +- Exchange (14)
+      +- HashAggregate (13)
+         +- Project (12)
+            +- SortMergeJoin Inner (11)
+               :- Sort (6)
+               :  +- HashAggregate (5)
+               :     +- Exchange (4)
+               :        +- HashAggregate (3)
+               :           +- Filter (2)
+               :              +- Scan parquet  (1)
+               +- Sort (10)
+                  +- Exchange (9)
+                     +- Filter (8)
+                        +- Scan parquet  (7)
+
+
+(1) Scan parquet 
+Output [2]: [customer_id#8, amount#9]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(amount), GreaterThan(amount,10.0), IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,amount:double>
+
+(2) Filter
+Input [2]: [customer_id#8, amount#9]
+Condition : ((isnotnull(amount#9) AND (amount#9 > 10.0)) AND isnotnull(customer_id#8))
+
+(3) HashAggregate
+Input [2]: [customer_id#8, amount#9]
+Keys [1]: [customer_id#8]
+Functions [2]: [partial_sum(amount#9), partial_count(1)]
+Aggregate Attributes [2]: [sum#80, count#81L]
+Results [3]: [customer_id#8, sum#82, count#83L]
+
+(4) Exchange
+Input [3]: [customer_id#8, sum#82, count#83L]
+Arguments: hashpartitioning(customer_id#8, 8), ENSURE_REQUIREMENTS, [plan_id=224]
+
+(5) HashAggregate
+Input [3]: [customer_id#8, sum#82, count#83L]
+Keys [1]: [customer_id#8]
+Functions [2]: [sum(amount#9), count(1)]
+Aggregate Attributes [2]: [sum(amount#9)#67, count(1)#66L]
+Results [3]: [customer_id#8, sum(amount#9)#67 AS total#61, count(1)#66L AS n#62L]
+
+(6) Sort
+Input [3]: [customer_id#8, total#61, n#62L]
+Arguments: [customer_id#8 ASC NULLS FIRST], false, 0
+
+(7) Scan parquet 
+Output [2]: [customer_id#10, segment#11]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/customers]
+PushedFilters: [IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,segment:string>
+
+(8) Filter
+Input [2]: [customer_id#10, segment#11]
+Condition : isnotnull(customer_id#10)
+
+(9) Exchange
+Input [2]: [customer_id#10, segment#11]
+Arguments: hashpartitioning(customer_id#10, 8), ENSURE_REQUIREMENTS, [plan_id=228]
+
+(10) Sort
+Input [2]: [customer_id#10, segment#11]
+Arguments: [customer_id#10 ASC NULLS FIRST], false, 0
+
+(11) SortMergeJoin
+Left keys [1]: [customer_id#8]
+Right keys [1]: [customer_id#10]
+Join type: Inner
+Join condition: None
+
+(12) Project
+Output [3]: [total#61, n#62L, segment#11]
+Input [5]: [customer_id#8, total#61, n#62L, customer_id#10, segment#11]
+
+(13) HashAggregate
+Input [3]: [total#61, n#62L, segment#11]
+Keys [1]: [segment#11]
+Functions [2]: [partial_sum(total#61), partial_sum(n#62L)]
+Aggregate Attributes [2]: [sum#76, sum#77L]
+Results [3]: [segment#11, sum#78, sum#79L]
+
+(14) Exchange
+Input [3]: [segment#11, sum#78, sum#79L]
+Arguments: hashpartitioning(segment#11, 8), ENSURE_REQUIREMENTS, [plan_id=235]
+
+(15) HashAggregate
+Input [3]: [segment#11, sum#78, sum#79L]
+Keys [1]: [segment#11]
+Functions [2]: [sum(total#61), sum(n#62L)]
+Aggregate Attributes [2]: [sum(total#61)#74, sum(n#62L)#75L]
+Results [3]: [segment#11, sum(total#61)#74 AS total#68, sum(n#62L)#75L AS n#69L]
+
+(16) AdaptiveSparkPlan
+Output [3]: [segment#11, total#68, n#69L]
+Arguments: isFinalPlan=false
+
+

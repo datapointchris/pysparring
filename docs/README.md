@@ -5,6 +5,6 @@ and says what was weighed and rejected.
 
 | Page | Holds |
 | --- | --- |
-| [experiment-model.md](experiment-model.md) | what an experiment declares and how it expands into cells and arms, what is refused before the first Spark call, why static confs come from Spark's registry rather than `isModifiable`, and what an experiment's identity hashes |
+| [how-each-comparison-decides.md](how-each-comparison-decides.md) | why a plan never names a winner, how ids are stripped, why timing uses a no-op write, a warm-up and shuffled rounds, the significance test and its floor of 5 runs, why outputs compare by key with a tolerance, and what v1 leaves out |
 
 Each page's headings state its findings, so a page's `##` lines are its contents.
