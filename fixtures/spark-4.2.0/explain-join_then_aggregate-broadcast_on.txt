@@ -1,0 +1,73 @@
+== Physical Plan ==
+AdaptiveSparkPlan (11)
++- HashAggregate (10)
+   +- Exchange (9)
+      +- HashAggregate (8)
+         +- Project (7)
+            +- BroadcastHashJoin Inner BuildRight (6)
+               :- Filter (2)
+               :  +- Scan parquet  (1)
+               +- BroadcastExchange (5)
+                  +- Filter (4)
+                     +- Scan parquet  (3)
+
+
+(1) Scan parquet 
+Output [2]: [customer_id#8, amount#9]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/orders]
+PushedFilters: [IsNotNull(amount), GreaterThan(amount,10.0), IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,amount:double>
+
+(2) Filter
+Input [2]: [customer_id#8, amount#9]
+Condition : ((isnotnull(amount#9) AND (amount#9 > 10.0)) AND isnotnull(customer_id#8))
+
+(3) Scan parquet 
+Output [2]: [customer_id#10, segment#11]
+Batched: true
+Location: InMemoryFileIndex [file:/tmp/pysparring-data/customers]
+PushedFilters: [IsNotNull(customer_id)]
+ReadSchema: struct<customer_id:int,segment:string>
+
+(4) Filter
+Input [2]: [customer_id#10, segment#11]
+Condition : isnotnull(customer_id#10)
+
+(5) BroadcastExchange
+Input [2]: [customer_id#10, segment#11]
+Arguments: HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [plan_id=73]
+
+(6) BroadcastHashJoin
+Left keys [1]: [customer_id#8]
+Right keys [1]: [customer_id#10]
+Join type: Inner
+Join condition: None
+
+(7) Project
+Output [2]: [amount#9, segment#11]
+Input [4]: [customer_id#8, amount#9, customer_id#10, segment#11]
+
+(8) HashAggregate
+Input [2]: [amount#9, segment#11]
+Keys [1]: [segment#11]
+Functions [2]: [partial_sum(amount#9), partial_count(1)]
+Aggregate Attributes [2]: [sum#22, count#23L]
+Results [3]: [segment#11, sum#24, count#25L]
+
+(9) Exchange
+Input [3]: [segment#11, sum#24, count#25L]
+Arguments: hashpartitioning(segment#11, 8), ENSURE_REQUIREMENTS, [plan_id=78]
+
+(10) HashAggregate
+Input [3]: [segment#11, sum#24, count#25L]
+Keys [1]: [segment#11]
+Functions [2]: [sum(amount#9), count(1)]
+Aggregate Attributes [2]: [sum(amount#9)#21, count(1)#20L]
+Results [3]: [segment#11, sum(amount#9)#21 AS total#14, count(1)#20L AS n#15L]
+
+(11) AdaptiveSparkPlan
+Output [3]: [segment#11, total#14, n#15L]
+Arguments: isFinalPlan=false
+
+

@@ -7,23 +7,22 @@ tasks:
     cmds:
       - task --list
 
+  # A worktree is a clean checkout, so everything gitignored is absent. The
+  # virtualenv comes back from uv.lock.
   setup:
-    desc: Install both distributions into the workspace's virtualenv
+    desc: Make a fresh checkout runnable
     cmds:
-      - uv sync --all-packages
+      - uv sync
 
   build:
-    desc: Build both distributions' wheels and sdists into dist/
+    desc: Build the wheel and sdist into dist/
     cmds:
-      - uv build --package pysparring --out-dir dist
-      - uv build --package pysparring-cli --out-dir dist
+      - uv build --out-dir dist
 
   test:
     desc: Run the test suite
     cmds:
-      # pytest exits 5 when it collects nothing, which a member with no tests
-      # yet is not a failure of.
-      - uv run pytest || test $? -eq 5
+      - uv run pytest
 
   lint:
     desc: Run every check without writing any file
@@ -33,9 +32,9 @@ tasks:
       - task: typecheck
 
   typecheck:
-    desc: Type check both distributions with mypy
+    desc: Type check with mypy
     cmds:
-      - uv run mypy .
+      - uv run mypy src tests
 
   format:
     desc: Apply ruff's formatting and autofixes
