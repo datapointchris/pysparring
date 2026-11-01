@@ -90,6 +90,7 @@ def read_plan(text: str) -> tuple[str, dict[str, int]]:
 
 
 def plan_diff(reference: str, reference_plan: str, name: str, plan: str) -> list[str]:
+    """The unified diff of two normalized plans, one line per item, empty when they are identical."""
     return list(difflib.unified_diff(reference_plan.splitlines(), plan.splitlines(), fromfile=reference, tofile=name, lineterm=''))
 
 
@@ -119,7 +120,25 @@ def time_runs(frames: dict[str, DataFrame], runs: int) -> dict[str, list[float]]
 
 @dc.dataclass(frozen=True, repr=False)
 class PlanComparison:
-    """Every DataFrame's plan against the first's, and when timed, its run times and speed verdict."""
+    """Every DataFrame's plan against the first's, and when timed, its run times and speed verdict.
+
+    Every dict is keyed by the names given to `compare_plans`. `print(comparison)` prints the
+    report as plain text, `rich.print(comparison)` prints it in color, and `repr(comparison)` is
+    one line.
+
+    Attributes:
+        names: The DataFrames' names, in the order given. The first is the reference.
+        plans: Each plan as `explain(mode="formatted")` printed it.
+        normalized_plans: Each plan with the ids and node numbers Spark renumbers on every build
+            stripped. The diffs compare these.
+        diffs: Each name after the first, mapped to its unified diff against the reference's
+            normalized plan, one line per item. An empty list means the plans are identical.
+        operator_counts: Each plan's operators, such as `SortMergeJoin`, mapped to how many it holds.
+        timings_ms: Each DataFrame's measured run times in milliseconds, in run order. Empty when
+            `runs` was 0.
+        verdicts: Each name after the first, mapped to its `SpeedVerdict` against the reference.
+            Empty when `runs` was 0.
+    """
 
     names: tuple[str, ...]
     plans: dict[str, str]
@@ -131,15 +150,22 @@ class PlanComparison:
 
     @property
     def reference(self) -> str:
+        """The name of the first DataFrame, which every other is compared with."""
         return self.names[0]
 
     def operator_deltas(self) -> dict[str, dict[str, int]]:
-        """Each operator whose count is not the same in every plan, with its count in each."""
+        """Each operator whose count is not the same in every plan, with its count in each.
+
+        Returns:
+            Operator names, such as `BroadcastHashJoin`, mapped to `{name: count}` for every
+            DataFrame. A plan without the operator counts 0. Empty when every count matches.
+        """
         operators = sorted({op for counts in self.operator_counts.values() for op in counts})
         table = {op: {name: self.operator_counts[name].get(op, 0) for name in self.names} for op in operators}
         return {op: counts for op, counts in table.items() if len(set(counts.values())) > 1}
 
     def plan_section(self) -> Iterator[Any]:
+        """The report's plan diffs and operator table, as rich renderables."""
         for name in self.names[1:]:
             yield Text(f'Plan diff, {self.reference} → {name}', style='bold')
             if not self.diffs[name]:
@@ -164,6 +190,7 @@ class PlanComparison:
             yield Text('Plans as explained before running. Adaptive execution can still change joins and partitions.', style='dim')
 
     def timing_section(self) -> Iterator[Any]:
+        """The report's run time table and verdicts, as rich renderables. Nothing when untimed."""
         if not self.timings_ms:
             return
         yield Text('\nRun times, ms', style='bold')
@@ -195,6 +222,7 @@ class PlanComparison:
 
 
 def diff_style(line: str) -> str:
+    """The rich style of one diff line: red removed, green added, cyan for a hunk header."""
     if line.startswith(('---', '+++')):
         return 'bold'
     if line.startswith('@@'):
@@ -207,10 +235,41 @@ def diff_style(line: str) -> str:
 
 
 def compare_plans(*dataframes: DataFrame, names: Sequence[str] | None = None, runs: int = 0) -> PlanComparison:
-    """Print each DataFrame's plan diffed against the first's, and the operators whose counts differ.
+    """Print each DataFrame's physical plan diffed against the first's, and time them when asked.
 
-    `runs=N` also times each DataFrame N times with a no-op write, and says which is faster when the
-    difference is significant. The plans print before the timing starts.
+    Each plan comes from `explain(mode="formatted")`. The ids Spark renumbers on every build are
+    stripped, so one transform built twice reads as identical. Under the diffs, a table lists every
+    operator whose count is not the same in every plan. The plans print before any timing starts.
+
+    With `runs`, each DataFrame is written to Spark's `noop` sink: three discarded warm-up rounds,
+    then `runs` rounds, each running every DataFrame once in a shuffled order. A DataFrame is
+    called faster than the first only when an exact Mann-Whitney U test gives p < 0.01 and the
+    slower median is at least 1.1 times the faster.
+
+    Args:
+        *dataframes: Two or more DataFrames, from a classic or a Spark Connect session. Each one
+            after the first is compared with the first.
+        names: One distinct name per DataFrame, used in the report and as the result's dict keys.
+            Defaults to `df1`, `df2` and so on.
+        runs: How many measured runs each DataFrame gets. 0 skips timing. Each run executes the
+            whole plan, so timing costs `(runs + 3) * len(dataframes)` executions.
+
+    Returns:
+        The comparison. `print(result)` prints the report again, and `result.verdicts` holds the
+        speed verdicts.
+
+    Raises:
+        ValueError: Fewer than two DataFrames, `names` of the wrong length or with a repeat, or
+            `runs` below 0 or from 1 to 4. The test cannot reach p < 0.01 with fewer than 5 runs
+            each.
+        RuntimeError: `explain` printed no physical plan to stdout.
+
+    Example:
+        ```python
+        compare_plans(old, new, names=['old', 'new'])
+        result = compare_plans(old, new, names=['old', 'new'], runs=5)
+        result.verdicts['new'].faster  # 'new', 'old', or None when the difference is not clear
+        ```
     """
     labels = tuple(names) if names is not None else tuple(f'df{i}' for i in range(1, len(dataframes) + 1))
     if len(dataframes) < 2:

@@ -35,7 +35,19 @@ class ColumnKind(enum.StrEnum):
 
 @dc.dataclass(frozen=True)
 class ComparedColumn:
-    """A column both sides hold. `cast` is the type both sides become when their types differ."""
+    """A column both sides hold, and how its values compare.
+
+    Attributes:
+        name: The column's name.
+        type_a: Its type in the first DataFrame, as Spark's simple string, such as `decimal(18,2)`.
+        type_b: Its type in the second DataFrame.
+        cast: The type both sides are cast to when their types differ: `bigint` for two integer
+            types, `double` for two other numeric types, and `string` otherwise. None when the
+            types match.
+        kind: Whether its values compare within the tolerance, as JSON text, or exactly.
+        numeric: Whether its values are numbers, so a mismatch reports its largest difference.
+        integral: Whether its values are integers, so their sum is taken without overflow.
+    """
 
     name: str
     type_a: str
@@ -48,18 +60,39 @@ class ComparedColumn:
 
 @dc.dataclass(frozen=True)
 class SchemaDifference:
+    """How the two schemas differ, over the columns `ignore_columns` leaves.
+
+    Attributes:
+        columns_only_in_a: `(name, type)` of each column only the first DataFrame holds.
+        columns_only_in_b: `(name, type)` of each column only the second DataFrame holds.
+        type_changes: Each column both hold at different types. It is still compared, after both
+            sides are cast to its `cast` type.
+    """
+
     columns_only_in_a: tuple[tuple[str, str], ...]
     columns_only_in_b: tuple[tuple[str, str], ...]
     type_changes: tuple[ComparedColumn, ...]
 
     @property
     def same(self) -> bool:
+        """True when both DataFrames hold the same columns at the same types."""
         return not (self.columns_only_in_a or self.columns_only_in_b or self.type_changes)
 
 
 @dc.dataclass(frozen=True)
 class ColumnDifference:
-    """One column across the rows matched by key. A value inside the tolerance is never a mismatch."""
+    """One column across the rows matched by key. A value inside the tolerance is never a mismatch.
+
+    Attributes:
+        column: The column's name.
+        mismatches: Matched rows whose values differ, a null against a value included.
+        null_only_in_a: Matched rows where the first DataFrame holds null and the second a value.
+        null_only_in_b: Matched rows where the second DataFrame holds null and the first a value.
+        max_abs_diff: The largest absolute difference among the mismatches. None for a column that
+            is not numeric, or when no mismatch has a value on both sides.
+        within_tolerance: Matched rows whose float values differ but fall within the tolerance.
+        max_abs_diff_within_tolerance: The largest of those differences. None when there are none.
+    """
 
     column: str
     mismatches: int
@@ -72,6 +105,15 @@ class ColumnDifference:
 
 @dc.dataclass(frozen=True)
 class StatisticDifference:
+    """One column statistic that differs between two outputs compared without keys.
+
+    Attributes:
+        column: The column's name.
+        statistic: `nulls`, `approx distinct`, `min`, `max` or `sum`.
+        a: The statistic over the first DataFrame.
+        b: The statistic over the second DataFrame.
+    """
+
     column: str
     statistic: str
     a: Any
@@ -80,6 +122,15 @@ class StatisticDifference:
 
 @dc.dataclass(frozen=True)
 class DifferingValue:
+    """One matched row's differing value in one column, from each side.
+
+    Attributes:
+        key: The row's key values, in the order of `keys`.
+        column: The column whose values differ.
+        a: The first DataFrame's value, as compared: cast to the shared type, or as JSON text.
+        b: The second DataFrame's value, as compared.
+    """
+
     key: tuple[Any, ...]
     column: str
     a: Any
@@ -92,7 +143,31 @@ class OutputComparison:
 
     A field ending in `_a` or `_b` describes `names[0]` or `names[1]`. A field is None where the
     comparison did not measure it: a keyed comparison has no column statistics, and one without
-    keys has no matched rows or per-column mismatches.
+    keys has no matched rows or per-column mismatches. `print(comparison)` prints the report as
+    plain text, `rich.print(comparison)` prints it in color, and `repr(comparison)` is one line.
+
+    Attributes:
+        names: The two DataFrames' names.
+        keys: The columns rows were matched on. Empty when compared without keys.
+        schema: The columns found on one side only, and the columns whose type changed.
+        rows_a: How many rows the first DataFrame holds.
+        rows_b: How many rows the second DataFrame holds.
+        only_in_a_rows: Rows of the first DataFrame left without a partner in the second.
+        only_in_b_rows: Rows of the second DataFrame left without a partner in the first.
+        matched_rows: Rows paired by key. None without keys.
+        duplicate_keys_a: Keys appearing more than once in the first DataFrame. None without keys.
+        duplicate_keys_b: Keys appearing more than once in the second DataFrame. None without keys.
+        column_differences: Each compared column's mismatches over the matched rows, keys aside.
+            None without keys.
+        differing_values: Up to `sample_rows` differing values for each mismatched column. None
+            without keys.
+        statistic_differences: Each column statistic that differs. None with keys.
+        rows_within_tolerance: Rows that paired only because their floats fell within the
+            tolerance. None with keys.
+        only_in_a_sample: Up to `sample_rows` rows found only in the first DataFrame, as tuples
+            in `sample_columns` order.
+        only_in_b_sample: Up to `sample_rows` rows found only in the second DataFrame.
+        sample_columns: The column names of a sample row: the keys, then the compared columns.
     """
 
     names: tuple[str, str]
@@ -115,6 +190,10 @@ class OutputComparison:
 
     @property
     def matches(self) -> bool:
+        """True when the schemas are the same, every row has a partner, and no column mismatches.
+
+        A float or double within the tolerance counts as matching.
+        """
         return (
             self.schema.same
             and self.rows_a == self.rows_b
@@ -124,6 +203,11 @@ class OutputComparison:
         )
 
     def assert_matches(self) -> None:
+        """Fail a test with the whole report when the outputs differ.
+
+        Raises:
+            AssertionError: `matches` is False. The message is the report as plain text.
+        """
         if not self.matches:
             raise AssertionError('\n' + str(self))
 
@@ -154,6 +238,7 @@ class OutputComparison:
         yield Text(footer, style='dim')
 
     def schema_section(self) -> Iterator[Any]:
+        """The report's schema lines, as rich renderables."""
         a, b = self.names
         yield Text('\nSchema', style='bold')
         if self.schema.same:
@@ -166,6 +251,7 @@ class OutputComparison:
             yield Text(f'  type changed   {change.name}   {change.type_a} → {change.type_b}, compared as {change.cast}')
 
     def rows_section(self) -> Iterator[Any]:
+        """The report's row counts, as rich renderables."""
         a, b = self.names
         yield Text('\nRows', style='bold')
         yield Text(f'  {a} {count(self.rows_a)}   {b} {count(self.rows_b)}')
@@ -178,6 +264,7 @@ class OutputComparison:
             yield Text(f'  {counted(self.rows_within_tolerance, "row")} matched only within the tolerance', style='dim')
 
     def columns_section(self) -> Iterator[Any]:
+        """The report's per-column mismatches or column statistics, as rich renderables."""
         a, b = self.names
         if self.column_differences is not None:
             mismatched = [d for d in self.column_differences if d.mismatches]
@@ -206,6 +293,7 @@ class OutputComparison:
             yield table
 
     def samples_section(self) -> Iterator[Any]:
+        """The report's sampled differing values and one-sided rows, as rich renderables."""
         a, b = self.names
         if self.differing_values:
             total = sum(d.mismatches for d in self.column_differences or ())
@@ -230,10 +318,12 @@ class OutputComparison:
 
 
 def number(value: float | None) -> str:
+    """A difference as a report shows it, to three significant figures."""
     return '' if value is None else f'{value:.3g}'
 
 
 def quoted(name: str) -> str:
+    """A column name quoted for `sf.col`, so a dot or a space in it is not read as syntax."""
     return '`' + name.replace('`', '``') + '`'
 
 
@@ -251,6 +341,7 @@ def values_within_tolerance(a: Any, b: Any, rel_tol: float, abs_tol: float) -> b
 
 
 def compared_column(name: str, type_a: Any, type_b: Any) -> ComparedColumn:
+    """How a column both sides hold compares, from its two Spark types."""
     import pyspark.sql.types as st
 
     a, b = type_a.simpleString(), type_b.simpleString()
@@ -292,9 +383,43 @@ def compare_outputs(
 ) -> OutputComparison:
     """Print whether a and b hold the same rows, and when they do not, which columns differ and how.
 
-    A float or double matches when `|a - b| <= abs_tol + rel_tol * |b|`. With `keys`, rows pair by
-    key and every column reports its mismatches. Without keys, rows pair by their other columns.
-    Everything runs on Spark, and only counts and samples reach the driver.
+    With `keys`, rows pair by a null-safe full outer join on the keys, and rows sharing a key pair
+    in order of their values. Every other column then reports its mismatches, its nulls found on
+    one side only, and its largest difference. Without keys, rows with an exact twin on the other
+    side match first. The rest pair by their columns other than floats, and a pair whose floats
+    all fall within the tolerance matches. Column statistics stand in for the per-column report.
+
+    A float or double matches when `|a - b| <= abs_tol + rel_tol * |b|`, numpy's `isclose` rule.
+    A column whose type changed is compared after casting both sides to one type. Row order,
+    column order and nullability are ignored. Everything runs on Spark, and only counts and
+    samples reach the driver.
+
+    Args:
+        a: The first DataFrame, such as the current transform's output.
+        b: The second DataFrame, such as the rewritten transform's output.
+        keys: The column, or columns, that identify a row on both sides. None compares without
+            keys, which says whether the outputs match but not which column differs.
+        names: The two DataFrames' names in the report. A result field ending in `_a` describes
+            the first, and one ending in `_b` the second.
+        rel_tol: The tolerance for floats and doubles, relative to the second DataFrame's value.
+        abs_tol: The absolute tolerance for floats and doubles. It decides values near zero, where
+            a relative tolerance allows almost nothing.
+        ignore_columns: Columns left out on both sides, such as a load timestamp.
+        sample_rows: How many differing values per column, and how many rows found on one side
+            only, the report shows.
+
+    Returns:
+        The comparison. `result.matches` says whether the outputs match.
+
+    Raises:
+        ValueError: `names` is not two different names, a key is not a column of both sides once
+            `ignore_columns` is applied, or no columns are left to compare.
+
+    Example:
+        ```python
+        result = compare_outputs(old, new, keys=['customer_id'], names=('old', 'new'), abs_tol=0.005)
+        result.assert_matches()
+        ```
     """
     key_names = (keys,) if isinstance(keys, str) else tuple(keys or ())
     labels = tuple(names)
@@ -337,6 +462,7 @@ def compare_keyed(
     abs_tol: float,
     sample_rows: int,
 ) -> OutputComparison:
+    """Pair rows by key, and count each column's mismatches over the pairs."""
     import pyspark.sql.functions as sf
     from pyspark.sql import Window
 
@@ -456,6 +582,7 @@ def compare_unkeyed(
     abs_tol: float,
     sample_rows: int,
 ) -> OutputComparison:
+    """Pair rows by their values, and compare each column's statistics."""
     import pyspark.sql.functions as sf
     from pyspark.sql import Window
 

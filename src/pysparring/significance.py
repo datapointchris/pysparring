@@ -1,4 +1,8 @@
-"""Whether one set of run times is faster than another, by an exact two-sided Mann-Whitney U test."""
+"""Whether one set of run times is faster than another, by an exact two-sided Mann-Whitney U test.
+
+The p-value is computed exactly from the U distribution, because the normal approximation is poor
+at the handful of runs a timing takes. It needs no scipy.
+"""
 
 import dataclasses as dc
 import math
@@ -31,6 +35,7 @@ def mann_whitney_p(a: list[float], b: list[float]) -> float:
 
 
 def smallest_reachable_p(runs: int) -> float:
+    """The p-value when every run of one side beats every run of the other, with `runs` each."""
     return 2 / math.comb(2 * runs, runs)
 
 
@@ -44,7 +49,19 @@ def fewest_runs() -> int:
 
 @dc.dataclass(frozen=True)
 class SpeedVerdict:
-    """One DataFrame's run times against the reference's. `faster` is None when the difference is not clear."""
+    """One DataFrame's run times against the reference's.
+
+    Attributes:
+        name: The DataFrame compared.
+        reference: The DataFrame it is compared with, the first one given to `compare_plans`.
+        median_ms: `name`'s median run time in milliseconds.
+        reference_median_ms: The reference's median run time in milliseconds.
+        ratio: The slower median over the faster, so never below 1.
+        p_value: The exact two-sided Mann-Whitney U p-value of the two sets of run times.
+        faster: `name` or `reference`, whichever ran faster, when `p_value` is below 0.01 and
+            `ratio` is at least 1.1. None when the difference is not clear.
+        runs: How many measured runs each side had.
+    """
 
     name: str
     reference: str
@@ -57,6 +74,7 @@ class SpeedVerdict:
 
     @property
     def sentence(self) -> str:
+        """The verdict as the report prints it, such as `new ran 1.84x faster than old (p=0.0079, 5 runs each)`."""
         runs = f'{self.runs} runs each'
         if self.faster is None:
             return f'no clear difference between {self.reference} and {self.name} (ratio {self.ratio:.2f}x, p={self.p_value:.3f}, {runs})'

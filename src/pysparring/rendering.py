@@ -12,6 +12,7 @@ def show(renderable: Any) -> None:
 
 
 def plain_text(renderable: Any) -> str:
+    """A report as text without color, 120 columns wide, for an assertion message or a log."""
     buffer = io.StringIO()
     Console(file=buffer, width=120, color_system=None, force_terminal=False, force_jupyter=False).print(renderable, soft_wrap=True)
     return buffer.getvalue()
@@ -27,8 +28,10 @@ def cell(value: Any) -> str:
 
 
 def count(value: int) -> str:
+    """A count with thousands separators."""
     return f'{value:,}'
 
 
 def counted(value: int, noun: str) -> str:
+    """A count and its noun, plural unless the count is 1."""
     return f'{value:,} {noun}' if value == 1 else f'{value:,} {noun}s'
