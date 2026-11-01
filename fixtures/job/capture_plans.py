@@ -1,18 +1,18 @@
 """Capture a classic Spark session's formatted plans and interleaved run times under OUT_ROOT/spark-<version>/.
 
-Run by regenerate.sh under spark-submit inside an apache/spark image.
+Run by regenerate.sh under spark-submit inside an apache/spark image, with the library's src/ on the path.
 """
 
-import contextlib
-import io
 import json
 import os
-import random
 import sys
 import time
 
 import pyspark.sql.functions as sf
 from pyspark.sql import SparkSession
+
+from pysparring.plans import explain_formatted
+from pysparring.plans import timing_rounds
 
 OUT_ROOT = sys.argv[1]
 ROUNDS = 6
@@ -32,13 +32,6 @@ os.makedirs(OUT, exist_ok=True)
 def write(name, text):
     with open(os.path.join(OUT, name), 'w') as fh:
         fh.write(text)
-
-
-def explain_formatted(df):
-    buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer):
-        df.explain(mode='formatted')
-    return buffer.getvalue()
 
 
 # A skewed fact and a small dimension, round-tripped through Parquet so scans show pushdown.
@@ -97,25 +90,22 @@ for config in CONFIGS:
 write('explain-join_then_aggregate-broadcast_off-rebuilt.txt', explain_formatted(join_then_aggregate(orders, customers)))
 
 
-def run_once(name, config):
+def run_once(arm):
+    name, config = arm.split(':')
     apply(config)
     df = TRANSFORMS[name](orders, customers)
-    spark.catalog.clearCache()
     started = time.perf_counter()
     df.write.format('noop').mode('overwrite').save()
     return (time.perf_counter() - started) * 1000
 
 
-# The schedule compare_plans uses: rounds in a shuffled order, the first WARMUP_ROUNDS discarded.
-WARMUP_ROUNDS = 2
-arms = [(name, config) for config in CONFIGS for name in TRANSFORMS]
-samples: dict[str, list[float]] = {f'{name}:{config}': [] for name, config in arms}
-schedule = random.Random(0)
-for round_number in range(1 - WARMUP_ROUNDS, ROUNDS + 1):
-    schedule.shuffle(arms)
-    for name, config in arms:
-        elapsed = run_once(name, config)
+# compare_plans' schedule, with each arm a transform under one conf.
+arms = [f'{name}:{config}' for config in CONFIGS for name in TRANSFORMS]
+samples: dict[str, list[float]] = {arm: [] for arm in arms}
+for round_number, order in timing_rounds(arms, ROUNDS):
+    for arm in order:
+        elapsed = run_once(arm)
         if round_number > 0:
-            samples[f'{name}:{config}'].append(round(elapsed, 1))
+            samples[arm].append(round(elapsed, 1))
 write('timings-interleaved.json', json.dumps(samples, indent=2) + '\n')
 spark.stop()

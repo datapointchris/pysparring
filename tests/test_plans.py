@@ -10,7 +10,7 @@ from pysparring.significance import mann_whitney_p
 from pysparring.significance import speed_verdict
 
 FIXTURES = Path(__file__).parent.parent / 'fixtures'
-RELEASES = ['spark-3.5.9', 'spark-4.2.0']
+RELEASES = sorted(path.name for path in FIXTURES.glob('spark-*'))
 
 
 def plan(release: str, name: str) -> str:
@@ -32,8 +32,9 @@ def test_turning_broadcast_off_trades_the_broadcast_join_for_a_sort_merge_join(r
     assert delta == {'BroadcastExchange': -1, 'BroadcastHashJoin': -1, 'Exchange': 2, 'Sort': 2, 'SortMergeJoin': 1}
 
 
-def test_the_speed_verdict_needs_significance_and_a_large_enough_ratio():
-    timings = json.loads((FIXTURES / 'spark-4.2.0' / 'timings-interleaved.json').read_text())
+@pytest.mark.parametrize('release', RELEASES)
+def test_the_speed_verdict_needs_significance_and_a_large_enough_ratio(release):
+    timings = json.loads((FIXTURES / release / 'timings-interleaved.json').read_text())
     off = speed_verdict(
         'aggregate_then_join',
         timings['aggregate_then_join:broadcast_off'],

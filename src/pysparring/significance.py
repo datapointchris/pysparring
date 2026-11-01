@@ -34,6 +34,14 @@ def smallest_reachable_p(runs: int) -> float:
     return 2 / math.comb(2 * runs, runs)
 
 
+def fewest_runs() -> int:
+    """The fewest runs each at which the exact test can reach a p-value below ALPHA."""
+    runs = 1
+    while smallest_reachable_p(runs) >= ALPHA:
+        runs += 1
+    return runs
+
+
 @dc.dataclass(frozen=True)
 class SpeedVerdict:
     """One DataFrame's run times against the reference's. `faster` is None when the difference is not clear."""

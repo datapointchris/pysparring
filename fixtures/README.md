@@ -18,7 +18,7 @@ Each runs with broadcast joins allowed (`broadcast_on`) and turned off (`broadca
 | --- | --- |
 | `spark-<version>/explain-<transform>-<config>.txt` | the plan as `explain("formatted")` prints it before running |
 | `spark-<version>/explain-join_then_aggregate-broadcast_off-rebuilt.txt` | the same transform built a second time, so its ids differ and its plan does not |
-| `spark-<version>/timings-interleaved.json` | milliseconds per `transform:config` arm, on `compare_plans`' schedule: rounds in a shuffled order, two discarded warm-up rounds, then 6 measured |
+| `spark-<version>/timings-interleaved.json` | milliseconds per `transform:config` arm, on `compare_plans`' schedule, which the job imports from the library: three discarded warm-up rounds, then 6 measured rounds in a shuffled order |
 
 These directories hold Spark's bytes. Formatted mode ends a scan's header with a space, and every
 plan ends in a blank line. The repo's hooks would rewrite both, so they skip `fixtures/spark-*/`.
