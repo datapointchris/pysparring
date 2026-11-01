@@ -2,7 +2,7 @@
 
 A Python library of two functions over PySpark DataFrames. `compare_plans` diffs physical plans and
 times them, and `compare_outputs` says which columns of two outputs differ and how. `docs/README.md`
-indexes why each is shaped the way it is.
+indexes the user guide and why each is shaped the way it is.
 
 ## The library is these two functions, and its scope is closed
 
@@ -16,7 +16,7 @@ need for it.
 src/pysparring/   plans.py, outputs.py, significance.py and rendering.py
 tests/            pure-Python tests over the fixtures
 fixtures/         real Spark output the tests read, and the docker job that captures it
-docs/             why the design is what it is
+docs/             the user guide, and why the design is what it is
 ```
 
 - **pyspark is never declared.** The user's environment supplies the one that matches its cluster:

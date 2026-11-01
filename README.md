@@ -10,100 +10,123 @@ from pysparring import compare_plans
 old = join_then_aggregate(orders, customers)
 new = aggregate_then_join(orders, customers)
 
-compare_plans(old, new, names=['old', 'new'])           # colored plan diff, then the operators that differ
-compare_plans(old, new, names=['old', 'new'], runs=5)   # also times both and says which is faster
-compare_outputs(old, new, keys='segment', names=('old', 'new'))
+compare_outputs(old, new, keys='segment', names=('old', 'new'))   # same rows? which columns differ?
+compare_plans(old, new, names=['old', 'new'], runs=5)            # plan diff, operator counts, timing
 ```
 
 Both functions take DataFrames from any session: local pyspark, a Docker container, or a notebook
 on a cluster, classic or Spark Connect. Each prints its report and returns it as an object.
 
-## `compare_plans` diffs plans and, when asked, times them
-
-`compare_plans(*dataframes, names=None, runs=0)` takes two or more DataFrames and compares each with
-the first.
-
-- It diffs each plan as `explain("formatted")` prints it, after stripping the ids Spark renumbers on
-  every build. A plan built twice reads as identical.
-- It lists every operator whose count differs, such as a `SortMergeJoin` that replaced a
-  `BroadcastHashJoin`.
-- It never names a winner from a plan. Spark's explain carries no total cost, and a plan with more
-  operators can run faster, because it shuffles fewer bytes.
-- `runs=5` or more times each DataFrame with a no-op write: three discarded warm-up rounds, then every
-  round in a shuffled order. A DataFrame is called faster only when an exact Mann-Whitney U test gives
-  p < 0.01 and its median is at least 1.1x better. Otherwise the report reads "no clear difference".
-- The plan diff prints before the timing starts.
-- The session's cache is left alone. A DataFrame built on a cached table is timed reading the cache,
-  and the report says so.
-
-The returned `PlanComparison` holds the plans, the diffs, the operator counts, the run times and the
-verdicts, each keyed by name.
+The [user guide](docs/user-guide.md) covers installing on each platform, reading every part of both
+reports, choosing keys, tolerances and run counts, testing with `assert_matches`, and sampling real
+tables so they still join.
 
 ## `compare_outputs` says which columns differ and how
 
-`compare_outputs(a, b, keys=None, names=('df1', 'df2'), rel_tol=1e-9, abs_tol=0.0, ignore_columns=(), sample_rows=5)`
-reports, in order:
+```text
+old vs new: outputs differ, keyed on customer_id
 
-- **Schema**: columns found on one side only, and type changes. A changed column is still compared,
-  after casting both sides to one type.
-- **Rows**: the count on each side, and how many are on one side only. With `keys`, also how many
-  rows matched and how many keys appear more than once. Without keys, a row pairs with one that has
-  the same values in every other column, and floats and doubles within the tolerance.
-- **Columns**: with `keys`, each column's mismatches on the matched rows, the nulls found on only one
-  side, and its largest absolute difference. Without keys, each column's null count, approximate
-  distinct count, min, max and sum, where they differ.
-- **Samples**: differing values side by side, then rows found on only one side.
+Schema
+  only in new    discount_pct   double
+  type changed   total   double → decimal(18,2), compared as double
 
-A float or double matches when `|a - b| <= abs_tol + rel_tol * |b|`, so two aggregations that sum in
-a different order still match. Row order, column order and nullability are ignored. Everything runs
-on Spark, and only counts and samples reach the driver.
+Rows
+  old 2,000   new 2,002
+  matched 1,999   only in old 1   only in new 3
+  new has 3 keys appearing more than once
 
-The returned `OutputComparison` has `.matches`, and a field ending in `_a` or `_b` describes
-`names[0]` or `names[1]`. `.assert_matches()` raises an `AssertionError` carrying the whole report,
-so a test can gate a refactor:
+Columns on matched rows, most mismatches first
+┏━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ column  ┃ differ ┃ null only in old ┃ null only in new ┃ max abs diff ┃
+┡━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ total   │  1,996 │                0 │                0 │        0.005 │
+│ segment │    285 │                0 │              284 │              │
+│ n       │      1 │                0 │                0 │            1 │
+└─────────┴────────┴──────────────────┴──────────────────┴──────────────┘
+```
+
+The report goes on to show differing values side by side, then rows found on one side only.
+
+- **With `keys`**, rows pair by a null-safe join on the keys, and each column reports its
+  mismatches, its nulls found on one side only, and its largest difference.
+- **Without keys**, rows pair by their other columns, and column statistics stand in for the
+  per-column report.
+- **A float or double matches** when `|a - b| <= abs_tol + rel_tol * |b|`, so two aggregations that
+  sum in a different order still match.
+- **Row order, column order and nullability are ignored.** Everything runs on Spark, and only counts
+  and samples reach the driver.
+
+`.assert_matches()` raises an `AssertionError` carrying the whole report, so a test can gate a
+refactor:
 
 ```python
 def test_refactor_keeps_the_output(spark):
     compare_outputs(old_pipeline(spark), new_pipeline(spark), keys=['customer_id']).assert_matches()
 ```
 
-## Comparing on a sample of real tables
+## `compare_plans` diffs plans and, when asked, times them
 
-- **Sample related tables by the same key hash.** `.sample(0.01)` on two tables keeps about 0.01% of
-  the rows that join. A filter on a hash of the join key keeps the same keys in every table:
+```text
+Plan diff, join first → agg first
+--- join first
++++ agg first
+@@ -6,9 +6,11 @@
+          +- Project
+             +- SortMergeJoin Inner
+                :- Sort
+-               :  +- Exchange
+-               :     +- Filter
+-               :        +- Scan parquet
++               :  +- HashAggregate
++               :     +- Exchange
++               :        +- HashAggregate
++               :           +- Filter
++               :              +- Scan parquet
+```
 
-  ```python
-  import pyspark.sql.functions as sf
+The node details follow in the same diff, then the operators whose counts differ and the timing:
 
-  def sample_by_key(df, key, percent):
-      return df.where(sf.pmod(sf.xxhash64(key), sf.lit(100)) < percent)
+```text
+Operators whose counts differ
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ operator      ┃ join first ┃ agg first ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ HashAggregate │          2 │         4 │
+└───────────────┴────────────┴───────────┘
 
-  orders = sample_by_key(spark.read.parquet('s3://bucket/orders'), 'customer_id', 1)
-  customers = sample_by_key(spark.read.parquet('s3://bucket/customers'), 'customer_id', 1)
-  ```
+Run times, ms
+┏━━━━━━━━━━━━┳━━━━━━━━┳━━━━━┳━━━━━━━┳━━━━━━┓
+┃            ┃ median ┃ min ┃   max ┃ runs ┃
+┡━━━━━━━━━━━━╇━━━━━━━━╇━━━━━╇━━━━━━━╇━━━━━━┩
+│ join first │    944 │ 707 │ 1,359 │    6 │
+│ agg first  │    519 │ 422 │   584 │    6 │
+└────────────┴────────┴─────┴───────┴──────┘
+agg first ran 1.82x faster than join first (p=0.0022, 6 runs each)
+```
 
-  `pmod` matters. `xxhash64` returns negative numbers, and `%` keeps their sign, so `% 100 < 1`
-  keeps about half the rows. Hash the key at one type in every table, because an `int` 42 and a
-  `bigint` 42 hash differently.
-- **A sample can broadcast a join that production sort-merges.** A sample written to files and read
-  back falls under `spark.sql.autoBroadcastJoinThreshold`, 10 MB by default, so its plan
-  broadcasts. A sample filtered in the same job plans a sort-merge join. Adaptive execution then
-  switches it to a broadcast at runtime, which the plan `compare_plans` prints cannot show but its
-  timings measure. A threshold of `-1` keeps both on sort-merge.
-- **Timings on a sample rank the plans at that size.** A plan's fixed cost is a larger share of a
-  small run.
+- **The diff compares plans as `explain("formatted")` prints them**, with the ids Spark renumbers
+  on every build stripped. A plan built twice reads as identical.
+- **It never names a winner from a plan.** Spark's explain carries no total cost, and above, the
+  plan with more operators ran faster, because it shuffles fewer rows.
+- **`runs=5` or more times each DataFrame** with a no-op write: three discarded warm-up rounds, then
+  every round in a shuffled order. A DataFrame is called faster only when an exact Mann-Whitney U
+  test gives p < 0.01 and its median is at least 1.1x better. Otherwise the report reads "no clear
+  difference".
+- **The plans print before the timing starts**, and the session's cache is left alone.
 
 ## Install
 
 pysparring installs into the environment whose Spark it compares on, and never installs pyspark.
-It needs Python 3.11 or later, and rich. The AWS Glue 5 image runs Python 3.11. The official
-`apache/spark` images run Python 3.10, so it does not install there.
+It needs Python 3.11 or later, and rich. Every release is published to its own package index, and
+rich comes from PyPI.
 
 ```bash
 uv add --dev --index https://pypi.ichrisbirch.com/simple/ pysparring
 ```
 
-Every release is published to that package index.
+The AWS Glue 5 image and Glue 5.0 and 5.1 jobs run Python 3.11. The official `apache/spark` images
+run Python 3.10, so they need Python 3.11 installed first. The user guide gives the steps for pip,
+Glue jobs and notebooks, Spark Connect and those images.
 
 ## Develop
 
@@ -113,6 +136,8 @@ task test
 task lint
 fixtures/regenerate.sh   # recapture the Spark output the tests read, in Docker
 ```
+
+[docs/](docs/README.md) holds the user guide, and why each comparison is built the way it is.
 
 ## License
 
