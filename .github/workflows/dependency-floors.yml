@@ -1,0 +1,39 @@
+name: Library at its dependency floors
+
+# validate.yml installs the locked versions, which never tests a lower bound such as rich>=15.0.0.
+# This installs every direct dependency at the floor the library declares, on Python 3.11, the
+# Python an AWS Glue 5 driver runs. Then it imports every module and runs the tests, so code that
+# outgrew a floor fails here.
+#
+# push is left out because release.yml calls this on every push to main.
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  floors:
+    name: library at its dependency floors
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.12.24"
+
+      # pytest goes in after the library, at its newest release, so it never resolves to a floor.
+      - name: Install the library at its floors into a 3.11 environment
+        run: |
+          uv venv --python 3.11 "$RUNNER_TEMP/floors"
+          uv pip install --python "$RUNNER_TEMP/floors" --resolution lowest-direct .
+          uv pip install --python "$RUNNER_TEMP/floors" pytest
+
+      - name: Import every module
+        run: '"$RUNNER_TEMP/floors/bin/python" -c "import pysparring.outputs, pysparring.plans, pysparring.rendering, pysparring.significance"'
+
+      - name: Test at the floors
+        run: '"$RUNNER_TEMP/floors/bin/python" -m pytest'

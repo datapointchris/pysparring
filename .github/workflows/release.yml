@@ -18,12 +18,15 @@ concurrency:
   queue: max
 
 jobs:
-  # Without this, release publishes whatever is on main, tested or not.
+  # Without these, release publishes whatever is on main, tested or not.
   validate:
     uses: ./.github/workflows/validate.yml
 
+  dependency-floors:
+    uses: ./.github/workflows/dependency-floors.yml
+
   release:
-    needs: validate
+    needs: [validate, dependency-floors]
     uses: datapointchris/reusable-workflows/.github/workflows/python-semantic-release.yml@v1
     permissions:
       contents: write
