@@ -737,96 +737,12 @@ script, never in an assertion.
 
 ## A sample of real tables keeps the same keys in every table
 
-Production tables are too large to compare repeatedly, and a sample has to keep its joins.
-
-### Sample keys, not rows
-
-`.sample(0.01)` keeps each row on its own coin flip. A joined row survives only when both of its
-sides did, so 1% of each table keeps about 0.01% of the join. A filter on a hash of the join key
-keeps the same keys in every table:
-
-```python
-import pyspark.sql.functions as sf
-
-
-def in_sample(key, percent):
-    """True for the same keys in every table: `percent` keys in every 100."""
-    return sf.pmod(sf.xxhash64(key), sf.lit(100)) < percent
-
-
-customers = spark.read.parquet('s3://my-bucket/customers').where(in_sample('customer_id', 1))
-orders = spark.read.parquet('s3://my-bucket/orders').where(in_sample('customer_id', 1))
-```
-
-On 2,000,000 orders over 100,000 customers, `.sample(0.01)` on both tables kept about 160 joined
-rows. The key hash kept 15,077. The hash depends on the key alone, so the same keys come back on
-every run.
-
-- Finer than 1%: `sf.pmod(sf.xxhash64(key), sf.lit(10000)) < 25` keeps 0.25%.
-- A key of several columns hashes them together: `sf.xxhash64('region', 'customer_id')`.
-
-### `pmod`, never `%`
-
-`xxhash64` returns a signed number, and `%` keeps its sign. Half the keys give a remainder from -99
-to 0, and `% 100 < 1` keeps every one of them: 50.3% of the customers instead of 1%.
-
-### Hash the key at one type in every table
-
-`xxhash64` hashes the value's bytes, so an `int` 42, a `bigint` 42 and a `string` '42' hash three
-ways. An `int` key in one table and a `bigint` key in the other sample different customers. Cast
-the key to one type inside the hash:
-
-```python
-in_sample(sf.col('customer_id').cast('bigint'), 1)
-```
-
-### A table without the key follows its parent by a semi join
-
-`order_items` holds `order_id`, not `customer_id`. Sample orders by customer, then keep the items
-whose order survived:
-
-```python
-items = spark.read.parquet('s3://my-bucket/order_items').join(orders.select('order_id'), 'order_id', 'left_semi')
-```
-
-A `left_semi` join returns only the left table's columns, and never repeats a left row. Further down
-a chain, each table semi-joins to the one above it.
-
-### A hot key is kept by hand, and its rows sampled by a second column
-
-A 1% hash drops any one key 99 times in 100. So the skewed key that makes production slow is
-usually missing from the sample, and so is the long task it causes. Keep the hot keys, and sample
-their rows by another column:
-
-```python
-# Find them with orders.groupBy('customer_id').count().orderBy(sf.desc('count')).limit(10)
-hot_ids = [1]
-is_hot = sf.col('customer_id').isin(hot_ids)
-
-customers = customers_full.where(in_sample('customer_id', 1) | is_hot)
-orders = orders_full.where(in_sample('customer_id', 1) | (is_hot & in_sample('order_id', 1)))
-```
-
-### Filter partitions before hashing
-
-Spark pushes only plain column comparisons down to Parquet, so the hash filter reads every row of
-every file it scans. Filter on partition columns first, so the scan reads only those partitions:
-
-```python
-orders = spark.read.parquet('s3://my-bucket/orders').where(sf.col('order_date') >= '2026-10-01').where(in_sample('customer_id', 1))
-```
-
-### A sample can broadcast a join that production sort-merges
-
-Spark sizes a table read from files by its file size. A sample written out and read back falls under
-`spark.sql.autoBroadcastJoinThreshold`, 10 MB by default, so its plan broadcasts. A sample filtered
-in the same job keeps the full table's size estimate, so its plan sort-merges, and adaptive
-execution switches it to a broadcast at runtime. Either way, the sample runs a different join than
-production. To see production's join on a sample, turn broadcasts off:
-
-```python
-spark.conf.set('spark.sql.autoBroadcastJoinThreshold', '-1')
-```
+Production tables are too large to compare repeatedly, so a comparison runs on a sample that keeps
+its joins. [Sampling Related Spark Tables](https://docs.ichrisbirch.com/spark/sampling-related-tables/)
+is the method, with its measurements. A filter on a hash of the join key keeps the same keys in
+every table, where `.sample()` on each table keeps almost no joined rows. The page also covers a
+table without the key, hot keys, partition filters, and a sample that broadcasts a join production
+sort-merges.
 
 ### Timings on a sample rank the plans at that size
 
