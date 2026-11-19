@@ -100,7 +100,9 @@ def run_once(arm):
 
 
 # compare_plans' schedule, with each arm a transform under one conf.
-arms = [f'{name}:{config}' for config in CONFIGS for name in TRANSFORMS]
+arms: list[str] = []
+for config in CONFIGS:
+    arms.extend(f'{name}:{config}' for name in TRANSFORMS)
 samples: dict[str, list[float]] = {arm: [] for arm in arms}
 for round_number, order in timing_rounds(arms, ROUNDS):
     for arm in order:

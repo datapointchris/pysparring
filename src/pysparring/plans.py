@@ -160,7 +160,10 @@ class PlanComparison:
             Operator names, such as `BroadcastHashJoin`, mapped to `{name: count}` for every
             DataFrame. A plan without the operator counts 0. Empty when every count matches.
         """
-        operators = sorted({op for counts in self.operator_counts.values() for op in counts})
+        seen: set[str] = set()
+        for counts in self.operator_counts.values():
+            seen.update(counts)
+        operators = sorted(seen)
         table = {op: {name: self.operator_counts[name].get(op, 0) for name in self.names} for op in operators}
         return {op: counts for op, counts in table.items() if len(set(counts.values())) > 1}
 

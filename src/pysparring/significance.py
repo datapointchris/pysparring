@@ -26,7 +26,9 @@ def u_counts(n: int, m: int) -> list[int]:
 
 def mann_whitney_p(a: list[float], b: list[float]) -> float:
     """The exact two-sided p-value for a and b coming from one distribution. Ties count half."""
-    u = sum(1.0 if x > y else 0.5 if x == y else 0.0 for x in a for y in b)
+    u = 0.0
+    for x in a:
+        u += sum(1.0 if x > y else 0.5 if x == y else 0.0 for y in b)
     counts = u_counts(len(a), len(b))
     total = math.comb(len(a) + len(b), len(b))
     lower = sum(counts[: math.floor(u) + 1]) / total
