@@ -26,7 +26,8 @@ docs/             the user guide, and why the design is what it is
 - **rich is the one dependency.** It prints color in a terminal or notebook, and plain text in a log
   or an assertion message.
 - **The code runs on Python 3.11**, the Python an AWS Glue 5.0 or 5.1 driver runs.
-  `.python-version` pins the project there, so a later feature fails locally and in CI.
+  `.python-version` pins the project there, so code written for a later Python fails locally and in
+  CI.
 - **A test reads Spark's behavior from a fixture**, never from a string written to look like Spark's
   output. Behavior that needs a live session is verified by running it in the Spark images, not by
   a committed test. The `apache/spark` images run Python 3.10, so a run there installs Ubuntu's

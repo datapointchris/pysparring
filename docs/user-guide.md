@@ -520,7 +520,7 @@ Only in new, 3 of 3
 Row order, column order and nullability are ignored.
 ```
 
-Each section answers one question:
+What each section of the report shows:
 
 - **Schema** lists the columns on one side only, and each type change. A column whose type changed
   is still compared, after casting both sides to one type: `bigint` for two integer types,

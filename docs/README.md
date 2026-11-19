@@ -1,7 +1,7 @@
 # pysparring docs
 
-How to use pysparring, and why it is shaped the way it is. The design page states its design as
-requirements the code must meet, and says what was weighed and rejected.
+The user guide covers installing and using pysparring. The design page says why each comparison
+works as it does, and what was weighed and rejected.
 
 | Page | Holds |
 | --- | --- |
