@@ -412,8 +412,8 @@ def compare_outputs(
         The comparison. `result.matches` says whether the outputs match.
 
     Raises:
-        ValueError: `names` is not two different names, a key is not a column of both sides once
-            `ignore_columns` is applied, or no columns are left to compare.
+        ValueError: `names` is not two different names, a key is also in `ignore_columns`, a key
+            is not a column of both sides, or no columns are left to compare.
 
     Example:
         ```python
@@ -426,6 +426,9 @@ def compare_outputs(
     if len(labels) != 2 or labels[0] == labels[1]:
         raise ValueError(f'names must be two different names, and got {list(labels)}')
     ignored = set(ignore_columns)
+    for key in key_names:
+        if key in ignored:
+            raise ValueError(f'key {key!r} is also in ignore_columns, so it cannot be a key')
     fields_a = {f.name: f.dataType for f in a.schema.fields if f.name not in ignored}
     fields_b = {f.name: f.dataType for f in b.schema.fields if f.name not in ignored}
     for key in key_names:

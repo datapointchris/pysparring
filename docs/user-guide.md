@@ -859,7 +859,8 @@ with `;` to leave the repr out.
 | `ValueError: compare_plans needs at least two DataFrames` | one DataFrame passed | pass two or more |
 | `ValueError: names must give each of the 2 DataFrames its own name, ...` | `names` has the wrong length or a repeat | one distinct name per DataFrame |
 | `ValueError: names must be two different names, ...` | `compare_outputs` got more or fewer than two names, or one twice | two distinct names |
-| `ValueError: key 'nope' is not a column of df1 or df2` | a key is missing on a side, or is in `ignore_columns` | check the spelling and the ignored columns |
+| `ValueError: key 'nope' is not a column of df1 or df2` | a side has no column of that name | check the spelling, or rename the column on that side |
+| `ValueError: key 'order_id' is also in ignore_columns, so it cannot be a key` | the same column is passed as a key and in `ignore_columns` | take it out of one of the two |
 | `ValueError: df1 and df2 share no columns left to compare` | no shared columns once `ignore_columns` is applied | ignore fewer columns, or rename to match |
 | `RuntimeError: explain(mode="formatted") on old printed no physical plan to stdout, ...` | something replaced `DataFrame.explain` or sent its output somewhere other than Python's stdout | the message quotes what `explain` did print; call `df.explain(mode='formatted')` yourself to see it |
 | `ERROR: Package 'pysparring' requires a different Python: 3.10.12 not in '>=3.11'` | Python 3.10, as in Glue 4.0 and the `apache/spark` images | Python 3.11 or later, or [the apache/spark recipe](#the-apachespark-images-need-python-311-installed-first) |
